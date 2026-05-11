@@ -1,0 +1,1584 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>家づくり安心ローンシミュレーター</title>
+    
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-XXXXXXX');</script>
+    <!-- End Google Tag Manager -->
+
+    <script>
+        // イベントトラッキング用ヘルパー関数
+        window.dataLayer = window.dataLayer || [];
+        function trackEvent(eventName, eventParams = {}) {
+            window.dataLayer.push({
+                'event': eventName,
+                ...eventParams
+            });
+        }
+    </script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#8B5CF6',
+                        success: '#10B981',
+                        warning: '#F59E0B',
+                        danger: '#EF4444',
+                        appbg: '#F3F4F6'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif; background-color: #F3F4F6; }
+        .chat-container { height: calc(100vh - 64px - 140px - 4px); overflow-y: auto; scroll-behavior: smooth; }
+        .typing-indicator span { display: inline-block; width: 6px; height: 6px; background-color: #9CA3AF; border-radius: 50%; margin: 0 2px; animation: bounce 1.4s infinite ease-in-out both; }
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+        .message-enter { animation: slideIn 0.3s ease-out forwards; opacity: 0; transform: translateY(10px); }
+        @keyframes slideIn { to { opacity: 1; transform: translateY(0); } }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* 口コミスライダー用 */
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* CTAボタンの鼓動アニメーション */
+        @keyframes pulse-soft {
+            0%, 100% { transform: scale(1); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+            50% { transform: scale(1.02); box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.3), 0 4px 6px -2px rgba(239, 68, 68, 0.15); }
+        }
+        .animate-pulse-soft { animation: pulse-soft 2s infinite ease-in-out; }
+        
+        /* AIのキラキラアニメーション */
+        @keyframes sparkle {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-sparkle { animation: sparkle 1.5s infinite; }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden">
+
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-XXXXXXX"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm h-16 flex items-center justify-between px-4 z-10 relative">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold shadow bg-white overflow-hidden border border-gray-200">
+                <img src="https://loan-diagnosis-admin.pages.dev/images/logo.png" alt="ロゴ" class="w-full h-full object-cover">
+            </div>
+            <div>
+                <h1 class="font-bold text-gray-800 text-sm sm:text-base">ローンアドバイザー</h1>
+                <p class="text-xs text-green-500 flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full bg-green-500 inline-block"></span> オンライン
+                </p>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="app.reset()" class="text-xs text-gray-500 hover:text-gray-800 px-2 py-1 rounded bg-gray-100"><i class="fa-solid fa-rotate-right mr-1"></i>最初から</button>
+        </div>
+    </header>
+
+    <!-- プログレスバー -->
+    <div class="w-full bg-gray-200 h-1 z-20 relative">
+        <div id="progressBar" class="bg-primary h-1 transition-all duration-500 ease-out" style="width: 0%"></div>
+    </div>
+
+    <!-- Chat Area -->
+    <main id="chatArea" class="chat-container p-4 flex flex-col gap-4">
+        <!-- Messages will be injected here -->
+    </main>
+
+    <!-- Input Area -->
+    <footer class="bg-white border-t border-gray-200 p-4 h-[140px] flex flex-col justify-center shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10 relative">
+        <div id="inputContainer" class="w-full max-w-2xl mx-auto flex flex-col items-center justify-center h-full">
+            <!-- Dynamic input elements will be injected here -->
+        </div>
+    </footer>
+
+    <!-- Exit Intent Modal (離脱防止ポップアップ) -->
+    <div id="exitIntentModal" class="fixed inset-0 bg-black bg-opacity-60 z-[100] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 text-center transform transition-all border-4 border-red-500">
+            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fa-solid fa-triangle-exclamation text-3xl text-red-600"></i>
+            </div>
+            <h2 class="text-xl font-bold text-red-600 mb-4">待ってください！</h2>
+            <p class="text-gray-800 leading-relaxed mb-6 text-sm font-bold text-left bg-gray-50 p-4 rounded-lg border border-gray-200">
+                現在、マイホームヒーローズへローン相談する方が急増中です🚨<br><br>
+                <span class="text-red-600">解約しないと生計が立てれない家族が増えています。</span><br><br>
+                本当にやめてしまいますか？
+            </p>
+            <div class="flex flex-col gap-3 justify-center">
+                <button onclick="closeExitIntent()" class="bg-gradient-to-r from-blue-500 to-primary text-white font-bold py-3 px-6 rounded-lg hover:opacity-90 transition shadow-md w-full">
+                    診断を続ける（無料）
+                </button>
+                <button onclick="closeExitIntentAndLeave()" class="bg-gray-100 text-gray-500 font-bold py-2 px-6 rounded-lg hover:bg-gray-200 transition shadow-sm w-full text-sm">
+                    やめる
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Terms of Service Modal -->
+    <div id="termsModal" class="fixed inset-0 bg-black bg-opacity-60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden transform transition-all">
+            <div class="bg-gray-50 px-5 py-4 border-b border-gray-200 flex justify-between items-center sticky top-0">
+                <h2 class="font-bold text-lg text-gray-800"><i class="fa-solid fa-file-contract text-primary mr-2"></i>利用規約</h2>
+                <button onclick="closeTermsModal()" class="text-gray-400 hover:text-gray-600 focus:outline-none p-1">
+                    <i class="fa-solid fa-xmark text-2xl"></i>
+                </button>
+            </div>
+            <div class="p-5 overflow-y-auto text-sm text-gray-700 leading-relaxed bg-white custom-scrollbar">
+                <p class="mb-4">本規約は、マイホームヒーローズ（以下「当サイト」といいます）が運営する「ローンアドバイザー（住宅ローン診断シミュレーターおよびFP相談サービス）」（以下「本サービス」といいます）の利用条件を定めるものです。本サービスをご利用になる前に、以下の内容を必ずお読みください。</p>
+                
+                <h3 class="font-bold text-base mt-4 mb-2 border-l-4 border-primary pl-2 text-gray-800">第1条（本サービスの内容と目的）</h3>
+                <p class="mb-4">本サービスは、ユーザーが入力した情報を基に、住宅ローンの借入目安や家計の簡易的なリスク判定（AI分析を含む）を行い、その結果をもとに弊社提携のファイナンシャルプランナー（FP）との無料オンライン面談を提供するものです。ユーザーの家計収支の見直しや、無理のない生活設計のサポートを目的としています。</p>
+
+                <h3 class="font-bold text-base mt-4 mb-2 border-l-4 border-primary pl-2 text-gray-800">第2条（シミュレーション結果および入力情報の取扱いに関する免責）</h3>
+                <p class="mb-2">本サービス上のウェブ画面で表示される簡易診断結果およびAI分析結果について、以下の点をあらかじめご承知おきください。</p>
+                <ul class="list-disc pl-5 space-y-2 text-gray-700 mb-4">
+                    <li>これらは、ユーザーが入力した情報の一部（年収、借入希望額等）を用いた簡易的な算出に基づく「目安」に過ぎません。</li>
+                    <li><strong>ユーザーが入力した詳細な家計データ（基本生活費、車の維持費、保険料、投資額、予定している一時的な支出など）は、システム上情報の取得は行っておりますが、ウェブ上の簡易シミュレーション結果やAI判定において全てが精緻に計算・加味されているわけではありません。</strong></li>
+                    <li>これらの詳細情報を正確に反映した将来のキャッシュフローや返済計画については、無料オンライン面談にてFPが直接ヒアリングし、個別にお作りして初めて明確になります。</li>
+                </ul>
+
+                <h3 class="font-bold text-base mt-4 mb-2 border-l-4 border-primary pl-2 text-gray-800">第3条（提案内容の非保証と責任の所在）</h3>
+                <ul class="list-disc pl-5 space-y-2 text-gray-700 mb-4">
+                    <li>本サービス（ウェブ上の診断結果、AIアドバイス、およびFPによる面談での提案等を含みます）で提供されるあらゆる情報は、その確実性、正確性、完全性、最新性、およびユーザーの特定の目的への適合性をいかなる意味においても保証するものではありません。</li>
+                    <li>提供したプランやアドバイスはあくまで一つの提案であり、将来の経済状況や金利変動、制度変更等により前提条件が変わる可能性があります。</li>
+                    <li>本サービスの情報に基づいてユーザーが住宅購入、ローン契約、金融商品の取引等のいかなる意思決定または行動を行った場合でも、それにより生じた損害や不利益について、当サイトおよび弊社は一切の責任を負いません。最終的な判断および契約等の行為は、必ずユーザーご自身の責任と判断において行ってください。</li>
+                </ul>
+
+                <h3 class="font-bold text-base mt-4 mb-2 border-l-4 border-primary pl-2 text-gray-800">第4条（FP業務および特定商品の取扱い）</h3>
+                <p class="mb-4">弊社のファイナンシャルプランナーが提供するアドバイスは、年金、保険、投資、税制、生活設計など多岐にわたる専門的な内容を含みますが、これらは特定の金融商品や不動産等の購入・契約を強制あるいは不当に誘引・誘導するものではありません。</p>
+
+                <h3 class="font-bold text-base mt-4 mb-2 border-l-4 border-primary pl-2 text-gray-800">第5条（無料オンライン面談について）</h3>
+                <p class="mb-4">オンライン面談の実施自体は無償で行います。ただし、面談への参加に伴う通信費、端末等の準備にかかる費用についてはユーザーご自身の実費負担となります。面談は原則としてZOOMまたはGoogle Meet等のオンライン通話ツールを使用して実施いたします。</p>
+
+                <h3 class="font-bold text-base mt-4 mb-2 border-l-4 border-primary pl-2 text-gray-800">第6条（個人情報の取扱いと外部委託）</h3>
+                <p class="mb-4">お客様の個人情報は、別途定める「個人情報の取扱いについて」に従い厳重に管理されます。また、当社は本サービスの業務遂行上、必要に応じて業務の一部または全部を提携先の第三者に委託し、それに伴い情報を提供することがあります。</p>
+
+                <h3 class="font-bold text-base mt-4 mb-2 border-l-4 border-primary pl-2 text-gray-800">第7条（規約の変更）</h3>
+                <p class="mb-4">当サイトは、必要と判断した場合には、ユーザーに事前通知することなく本規約を変更することができるものとします。変更後の規約は、本サービス上に掲載された時点より効力を生じるものとします。</p>
+            </div>
+            <div class="bg-gray-50 px-5 py-4 border-t border-gray-200 flex justify-center">
+                <button onclick="closeTermsModal()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-10 rounded-lg transition-colors shadow-sm">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Privacy Policy Modal -->
+    <div id="privacyModal" class="fixed inset-0 bg-black bg-opacity-60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden transform transition-all">
+            <div class="bg-gray-50 px-5 py-4 border-b border-gray-200 flex justify-between items-center sticky top-0">
+                <h2 class="font-bold text-lg text-gray-800"><i class="fa-solid fa-shield-halved text-primary mr-2"></i>個人情報の取扱いについて</h2>
+                <button onclick="closePrivacyModal()" class="text-gray-400 hover:text-gray-600 focus:outline-none p-1">
+                    <i class="fa-solid fa-xmark text-2xl"></i>
+                </button>
+            </div>
+            <div class="p-5 overflow-y-auto text-sm text-gray-700 leading-relaxed bg-white custom-scrollbar">
+                <p class="mb-4">合同会社Dots（以下「当社」といいます。）は、お客様からお預かりする個人情報の重要性を深く認識し、個人情報の保護に関する法律（個人情報保護法）その他関連法令を遵守し、お客様の個人情報を適切に取り扱い、安全に管理いたします。<br>
+                当社が提供する住宅ローン診断サービス（以下「本サービス」といいます。）をご利用いただく際に、以下の内容をご確認いただき、ご同意いただけますようお願い申し上げます。</p>
+
+                <h3 class="font-bold text-base mt-6 mb-2 border-l-4 border-primary pl-2 text-gray-800">第1条 事業者情報</h3>
+                <ul class="mb-4 space-y-1 pl-2">
+                    <li><strong>事業者名:</strong> 合同会社Dots</li>
+                    <li><strong>代表者:</strong> 代表社員　潟沼勇気</li>
+                    <li><strong>所在地:</strong> 〒150-0045 東京都渋谷区神泉町10-10 VORT渋谷神泉3-C</li>
+                    <li><strong>個人情報保護管理者:</strong> 代表社員　潟沼勇気</li>
+                    <li><strong>お問い合わせ窓口:</strong> 合同会社Dots　個人情報相談窓口</li>
+                    <li><strong>メールアドレス:</strong> myhomeheroes.noreply@dots-cnct.com</li>
+                    <li><strong>受付時間:</strong> 平日10:00～18:00（土日祝日を除く）</li>
+                </ul>
+
+                <h3 class="font-bold text-base mt-6 mb-2 border-l-4 border-primary pl-2 text-gray-800">第2条 取得する個人情報の項目</h3>
+                <p class="mb-2 pl-2 text-gray-700">当社は、本サービスの提供にあたり、以下の個人情報を取得いたします。</p>
+                <div class="mb-4 pl-2 space-y-3">
+                    <div>
+                        <p class="font-bold text-gray-800 mb-1">（1）お客様が入力する情報</p>
+                        <ul class="list-disc pl-5 space-y-1 text-gray-700">
+                            <li>お名前（フルネーム）</li>
+                            <li>メールアドレス</li>
+                            <li>年齢</li>
+                            <li>お住まいの都道府県</li>
+                            <li>年収（税込年収）</li>
+                            <li>配偶者の年収（該当する場合）</li>
+                            <li>世帯年収（合算）</li>
+                            <li>借入希望額（住宅ローンの希望借入額）</li>
+                            <li>現在の貯蓄額</li>
+                            <li>持ち家の有無（現在の住宅状況）</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-800 mb-1">（2）自動的に取得する情報</p>
+                        <ul class="list-disc pl-5 space-y-1 text-gray-700">
+                            <li>診断結果データ（借入可能額、判定ランク等）</li>
+                            <li>IPアドレス</li>
+                            <li>アクセス日時</li>
+                            <li>ブラウザ情報</li>
+                            <li>Cookie情報（後述）</li>
+                            <li>サービス利用履歴</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3 class="font-bold text-base mt-6 mb-2 border-l-4 border-primary pl-2 text-gray-800">第3条 個人情報の利用目的</h3>
+                <p class="mb-2 pl-2 text-gray-700">当社は、お預かりした個人情報を以下の目的で利用いたします。</p>
+                <div class="mb-4 pl-2 space-y-3">
+                    <div>
+                        <p class="font-bold text-gray-800 mb-1">（1）本サービスの提供</p>
+                        <ul class="list-disc pl-5 space-y-1 text-gray-700">
+                            <li>住宅ローン診断の実施および結果の表示</li>
+                            <li>診断結果に基づくアドバイスの提供</li>
+                            <li>本サービスの維持・改善・開発</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-800 mb-1">（2）お客様対応</p>
+                        <ul class="list-disc pl-5 space-y-1 text-gray-700">
+                            <li>お客様からのお問い合わせへの対応</li>
+                            <li>診断内容に関する相談対応</li>
+                            <li>住宅ローンに関する追加情報の提供</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-800 mb-1">（3）サービス案内</p>
+                        <ul class="list-disc pl-5 space-y-1 text-gray-700">
+                            <li>当社が提供する関連サービスのご案内</li>
+                            <li>住宅ローンに関する有益な情報の配信</li>
+                            <li>セミナーやイベントのご案内</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-800 mb-1">（4）サービス改善</p>
+                        <ul class="list-disc pl-5 space-y-1 text-gray-700">
+                            <li>サービス利用状況の分析</li>
+                            <li>顧客動向の調査・分析</li>
+                            <li>新サービスの企画・開発</li>
+                            <li>統計データの作成（個人を特定できない形式）</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-800 mb-1">（5）その他</p>
+                        <ul class="list-disc pl-5 space-y-1 text-gray-700">
+                            <li>法令に基づく対応</li>
+                            <li>本サービスの利用規約違反への対応</li>
+                            <li>その他、上記利用目的に付随する目的</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3 class="font-bold text-base mt-6 mb-2 border-l-4 border-primary pl-2 text-gray-800">第4条 個人情報の保存期間</h3>
+                <div class="mb-4 pl-2 space-y-3 text-gray-700">
+                    <div>
+                        <p class="font-bold text-gray-800 mb-1">（1）保存期間</p>
+                        <p>当社は、お預かりした個人情報をご相談完了後3年間保存いたします。</p>
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-800 mb-1">（2）保存理由</p>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li>お客様からの再度のお問い合わせへの対応</li>
+                            <li>相談履歴の管理</li>
+                            <li>法令に基づく記録保存義務の履行</li>
+                            <li>サービス品質の向上</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-800 mb-1">（3）保存期間経過後の取扱い</p>
+                        <p>保存期間経過後は、お客様の個人情報を遅滞なく削除または復元不可能な形で匿名化いたします。ただし、法令により保存が義務付けられている場合は、その期間保存いたします。</p>
+                    </div>
+                </div>
+
+                <h3 class="font-bold text-base mt-6 mb-2 border-l-4 border-primary pl-2 text-gray-800">第5条 個人情報の第三者提供</h3>
+                <div class="mb-4 pl-2 space-y-3 text-gray-700">
+                    <div>
+                        <p class="font-bold text-gray-800 mb-1">（1）原則</p>
+                        <p>当社は、以下の場合を除き、お客様の同意なく個人情報を第三者に提供することはありません。</p>
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-800 mb-1">（2）第三者提供する場合</p>
+                        <div class="pl-2 space-y-2 mt-1">
+                            <p class="font-semibold">① お客様の同意がある場合</p>
+                            <p class="pl-3">金融機関へのご紹介<br>お客様が希望され、事前に同意をいただいた場合、提携先の金融機関に対してお客様の情報を提供することがあります。この場合、提供前に改めて同意を取得いたします。</p>
+                            
+                            <p class="font-semibold">② 法令に基づく場合</p>
+                            <ul class="list-disc pl-8">
+                                <li>裁判所、警察、税務署その他の公的機関から法令に基づく開示要請があった場合</li>
+                                <li>法令により開示が認められる場合</li>
+                            </ul>
+
+                            <p class="font-semibold">③ 人の生命・身体・財産の保護に必要な場合</p>
+                            <p class="pl-3">お客様または第三者の生命、身体または財産の保護のために必要であり、お客様の同意を得ることが困難な場合</p>
+
+                            <p class="font-semibold">④ 業務委託先への提供</p>
+                            <p class="pl-3 mb-1">サービス提供に必要な範囲で、以下の業務委託先に個人情報を提供することがあります。この場合、委託先と秘密保持契約を締結し、適切な管理・監督を行います。</p>
+                            <ul class="list-disc pl-8">
+                                <li>システム保守・運用業者</li>
+                                <li>カスタマーサポート業者</li>
+                                <li>データ分析業者</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-800 mb-1">（3）提供する情報の内容</p>
+                        <p>第三者に提供する場合、必要最小限の情報のみを提供いたします。</p>
+                    </div>
+                </div>
+
+                <h3 class="font-bold text-base mt-6 mb-2 border-l-4 border-primary pl-2 text-gray-800">第6条 個人情報の安全管理措置</h3>
+                <p class="mb-2 pl-2 text-gray-700">当社は、お預かりした個人情報の漏えい、滅失、き損等を防止するため、以下の安全管理措置を講じております。</p>
+                <div class="mb-4 pl-2 space-y-3 text-gray-700">
+                    <div>
+                        <p class="font-bold text-gray-800 mb-1">（1）組織的安全管理措置</p>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li>個人情報保護管理者の設置</li>
+                            <li>個人情報取扱規程の策定</li>
+                            <li>従業員への定期的な教育・研修</li>
+                            <li>取扱状況の定期的な点検・監査</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-800 mb-1">（2）人的安全管理措置</p>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li>従業員との秘密保持契約の締結</li>
+                            <li>個人情報取扱いに関する社内教育の実施</li>
+                            <li>退職後の守秘義務の継続</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-800 mb-1">（3）物理的安全管理措置</p>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li>個人情報を含む機器・媒体の施錠管理</li>
+                            <li>オフィスへの入退室管理</li>
+                            <li>個人情報の持ち出し制限</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-800 mb-1">（4）技術的安全管理措置</p>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li>通信の暗号化：SSL/TLS（HTTPS）による暗号化通信</li>
+                            <li>アクセス制御：ID・パスワードによる認証、アクセス権限の設定</li>
+                            <li>不正アクセス対策：ファイアウォール、ウイルス対策ソフトの導入</li>
+                            <li>データベースの保護：Cloudflare D1による安全なデータ管理</li>
+                            <li>セキュリティヘッダの設定：XSS攻撃、クリックジャッキング等への対策</li>
+                            <li>定期的なセキュリティ診断の実施</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3 class="font-bold text-base mt-6 mb-2 border-l-4 border-primary pl-2 text-gray-800">第7条 Cookieおよびアクセス解析ツールについて</h3>
+                <div class="mb-4 pl-2 space-y-3 text-gray-700">
+                    <div>
+                        <p class="font-bold text-gray-800 mb-1">（1）Cookieの使用</p>
+                        <p class="mb-2">当社は、サービスの利便性向上および利用状況の分析のため、Cookieを使用しております。</p>
+                        <div class="pl-2 space-y-2">
+                            <p><strong>Cookieとは</strong><br>ウェブサイトがお客様のブラウザを識別するために送信する小さなデータファイルです。Cookie自体には個人を特定する情報は含まれません。</p>
+                            <p><strong>使用目的</strong></p>
+                            <ul class="list-disc pl-5">
+                                <li>サービスの利用状況の分析</li>
+                                <li>サービスの改善・最適化</li>
+                                <li>ユーザー体験の向上</li>
+                            </ul>
+                            <p class="mt-2"><strong>取得する情報</strong></p>
+                            <ul class="list-disc pl-5">
+                                <li>アクセス履歴</li>
+                                <li>サービス利用状況</li>
+                                <li>IPアドレス</li>
+                                <li>ブラウザ情報</li>
+                            </ul>
+                            <p class="mt-2"><strong>Cookieの無効化</strong><br>お客様のブラウザ設定でCookieを無効にすることができます。ただし、Cookieを無効にすると、本サービスの一部機能が正常に動作しない場合があります。</p>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-800 mb-1">（2）アクセス解析ツール</p>
+                        <p class="mb-1">当社は、サービス改善のため、以下のアクセス解析ツールを使用することがあります。</p>
+                        <ul class="list-disc pl-5 mb-2">
+                            <li>Google Analytics（Googleのプライバシーポリシーに準拠）</li>
+                            <li>その他類似のアクセス解析サービス</li>
+                        </ul>
+                        <p>これらのツールは匿名化された情報のみを取得し、個人を特定することはありません。</p>
+                    </div>
+                </div>
+
+                <h3 class="font-bold text-base mt-6 mb-2 border-l-4 border-primary pl-2 text-gray-800">第8条 個人情報の開示・訂正・削除・利用停止</h3>
+                <div class="mb-4 pl-2 space-y-3 text-gray-700">
+                    <div>
+                        <p class="font-bold text-gray-800 mb-1">（1）お客様の権利</p>
+                        <p class="mb-1">お客様は、当社が保有するお客様の個人情報について、以下の権利を有しております。</p>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li>開示請求：どのような個人情報を保有しているか開示を求める権利</li>
+                            <li>訂正請求：個人情報に誤りがある場合、訂正を求める権利</li>
+                            <li>削除請求：個人情報の削除を求める権利</li>
+                            <li>利用停止請求：個人情報の利用停止を求める権利</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-800 mb-1">（2）請求方法</p>
+                        <p>上記の権利を行使される場合は、以下の窓口（お問い合わせ窓口）までご連絡ください。</p>
+                    </div>
+                </div>
+
+                <h3 class="font-bold text-base mt-6 mb-2 border-l-4 border-primary pl-2 text-gray-800">第9条 個人情報の取扱いの委託</h3>
+                <p class="mb-2 pl-2 text-gray-700">当社は、サービス提供に必要な範囲で、個人情報の取扱いを外部業者に委託することがあります。</p>
+                <div class="mb-4 pl-2 space-y-3 text-gray-700">
+                    <div>
+                        <p class="font-bold text-gray-800 mb-1">（1）委託先の選定</p>
+                        <p>個人情報保護に関する十分な管理体制を有し、適切なセキュリティ対策を実施していることなどを基準に厳格に選定いたします。</p>
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-800 mb-1">（2）委託先の管理</p>
+                        <p>秘密保持契約の締結、定期的な監査の実施等を行います。</p>
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-800 mb-1">（3）主な委託先</p>
+                        <p>インフラ提供事業者：Cloudflare（米国）等</p>
+                    </div>
+                </div>
+
+                <h3 class="font-bold text-base mt-6 mb-2 border-l-4 border-primary pl-2 text-gray-800">第10条 外国にある第三者への提供</h3>
+                <div class="mb-4 pl-2 space-y-3 text-gray-700">
+                    <div>
+                        <p class="font-bold text-gray-800 mb-1">（1）提供先</p>
+                        <p>当社は、サービス提供に必要な範囲で、外国にある第三者に個人情報を提供いたします。<br>
+                        提供先の名称：Cloudflare, Inc.（アメリカ合衆国カリフォルニア州）<br>
+                        利用目的：本サービスのインフラ提供</p>
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-800 mb-1">（2）安全管理措置</p>
+                        <p>Cloudflareは、GDPR等に準拠し、業界標準のセキュリティ対策を実施しており、当社と同等以上の安全管理措置を講じております。</p>
+                    </div>
+                </div>
+
+                <h3 class="font-bold text-base mt-6 mb-2 border-l-4 border-primary pl-2 text-gray-800">第11条 個人情報保護方針の変更</h3>
+                <div class="mb-4 pl-2 space-y-3 text-gray-700">
+                    <p>当社は、法令の変更、サービス内容の変更、その他必要に応じて、本方針を変更することがあります。変更した場合は本サービスのウェブサイト上で告知いたします。</p>
+                </div>
+
+                <h3 class="font-bold text-base mt-6 mb-2 border-l-4 border-primary pl-2 text-gray-800">第12条 お問い合わせ窓口</h3>
+                <div class="mb-4 pl-2 space-y-1 text-gray-700">
+                    <p>合同会社Dots　個人情報相談窓口</p>
+                    <p>担当者：個人情報保護管理者　潟沼勇気</p>
+                    <p>所在地：〒150-0045 東京都渋谷区神泉町10-10 VORT渋谷神泉3-C</p>
+                    <p>メールアドレス：myhomeheroes.noreply@dots-cnct.com</p>
+                    <p>受付時間：平日10:00～18:00（土日祝日、年末年始を除く）</p>
+                    <p class="text-xs text-gray-500 mt-1">※お電話でのお問い合わせは承っておりません。メールにてお願いいたします。</p>
+                </div>
+
+                <h3 class="font-bold text-base mt-6 mb-2 border-l-4 border-primary pl-2 text-gray-800">第13条 認定個人情報保護団体</h3>
+                <p class="mb-4 pl-2 text-gray-700">当社は、個人情報保護法に基づく認定個人情報保護団体には加入しておりません。個人情報の取扱いに関する苦情については、上記お問い合わせ窓口までご連絡ください。</p>
+
+                <h3 class="font-bold text-base mt-6 mb-2 border-l-4 border-primary pl-2 text-gray-800">第14条 制定日および改定日</h3>
+                <p class="mb-4 pl-2 text-gray-700">制定日：2025年11月11日<br>最終改定日：2025年11月11日</p>
+
+                <div class="mt-8 pt-6 border-t-2 border-dashed border-gray-300">
+                    <h3 class="font-bold text-base mb-3 text-gray-800 text-center bg-gray-100 py-2 rounded">付録：個人情報保護法に基づく表示</h3>
+                    <p class="text-xs text-gray-600 mb-2"><strong>個人情報保護法第21条第1項に基づく表示</strong><br>
+                    本サービスにおいて、個人情報をご提供いただくことは任意です。ただし、必要な情報をご提供いただけない場合、本サービスをご利用いただけない場合があります。</p>
+                    <ul class="text-xs text-gray-600 space-y-1">
+                        <li><strong>取得する個人情報の項目（再掲）:</strong> 氏名、メールアドレス、年齢、都道府県、年収、配偶者年収、世帯年収、借入希望額、貯蓄額、持ち家の有無、診断結果データ</li>
+                        <li><strong>利用目的（再掲）:</strong> 住宅ローン診断サービスの提供、診断結果に基づく相談対応、サービスに関する情報提供、サービスの改善・開発、統計データの作成</li>
+                        <li><strong>お問い合わせ先（再掲）:</strong> 合同会社Dots 個人情報相談窓口 (myhomeheroes.noreply@dots-cnct.com)</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-5 py-4 border-t border-gray-200 flex justify-center">
+                <button onclick="closePrivacyModal()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-10 rounded-lg transition-colors shadow-sm">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Exit Intent Modal Controller
+        window.closeExitIntent = function() {
+            document.getElementById('exitIntentModal').classList.add('hidden');
+            trackEvent('exit_intent_continue');
+        };
+        window.closeExitIntentAndLeave = function() {
+            document.getElementById('exitIntentModal').classList.add('hidden');
+            trackEvent('exit_intent_leave');
+        };
+
+        let exitIntentTriggered = false;
+        const triggerExitIntent = () => {
+            if (!exitIntentTriggered && typeof app !== 'undefined' && app.state.qIndex > 0 && app.state.qIndex < QUESTIONS.length - 1) {
+                document.getElementById('exitIntentModal').classList.remove('hidden');
+                exitIntentTriggered = true;
+                trackEvent('exit_intent_shown');
+            }
+        };
+
+        // PC向け
+        document.addEventListener('mouseleave', (e) => {
+            if (e.clientY < 0) triggerExitIntent();
+        });
+        
+        // スマホ向け (History API)
+        window.history.pushState({page: 1}, "", "");
+        window.addEventListener('popstate', (e) => {
+            if (!exitIntentTriggered && typeof app !== 'undefined' && app.state.qIndex > 0 && app.state.qIndex < QUESTIONS.length - 1) {
+                triggerExitIntent();
+                window.history.pushState({page: 1}, "", "");
+            }
+        });
+
+        // Modals
+        window.openPrivacyModal = function() {
+            document.getElementById('privacyModal').classList.remove('hidden');
+            trackEvent('modal_opened', { modal: 'privacy' });
+        };
+        window.closePrivacyModal = function() {
+            document.getElementById('privacyModal').classList.add('hidden');
+        };
+        window.openTermsModal = function() {
+            document.getElementById('termsModal').classList.remove('hidden');
+            trackEvent('modal_opened', { modal: 'terms' });
+        };
+        window.closeTermsModal = function() {
+            document.getElementById('termsModal').classList.add('hidden');
+        };
+
+        const PREFECTURES = [
+            "北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県",
+            "茨城県","栃木県","群馬県","埼玉県","千葉県","東京都","神奈川県",
+            "新潟県","富山県","石川県","福井県","山梨県","長野県","岐阜県",
+            "静岡県","愛知県","三重県","滋賀県","京都府","大阪府","兵庫県",
+            "奈良県","和歌山県","鳥取県","島根県","岡山県","広島県","山口県",
+            "徳島県","香川県","愛媛県","高知県","福岡県","佐賀県","長崎県",
+            "熊本県","大分県","宮崎県","鹿児島県","沖縄県"
+        ];
+
+        const HM_OPTIONS = [
+            '株式会社AQ Group（AQURA HOME）', '株式会社Nichimei Home', 'WITHDOM Group株式会社', '株式会社アイ工務店',
+            '株式会社アールプランナー（アルギャラリー）', '株式会社ウィザースホーム', '株式会社オークヴィルホームズ',
+            'クラシスホーム株式会社', '株式会社クレバリーホーム', '株式会社サンクスホーム', 'サーラ住宅株式会社',
+            'シンプル工務店', 'セキスイハイム', 'タマホーム株式会社', 'トヨタホーム株式会社', 'ネクストイノベーション株式会社',
+            '株式会社ノーブルホーム', 'パナソニック ホームズ株式会社', '株式会社ヒノキヤグループ', '株式会社ホーム企画センター',
+            'ミサワホーム株式会社', '株式会社ヤマダホームズ', 'ヤマト住建株式会社', 'ライフデザインカバヤ株式会社',
+            '株式会社一条工務店', '三井ホーム株式会社', '三菱地所ホーム株式会社', '株式会社中美建設', '住友不動産株式会社',
+            '住友林業株式会社', '大和ハウス工業株式会社', '株式会社大雄（ユーハウス）', '株式会社日本ハウスホールディングス',
+            '旭化成ホームズ株式会社', '積水ハウス株式会社', 'その他'
+        ];
+
+        const REVIEWS = [
+            { score: 4.0, attributes: '30代・女性・山梨県・年収400万円〜500万円', date: '2026/02/28', tags: ['予算', 'デザイン'], comment: '予算と希望に合ったハウスメーカーを提案していただき、実際に一緒にハウスメーカーにも同行していただいたことで良い担当者さんも紹介していただけました。間取りや設備選びで悩んだときも相談に乗っていただき、担当者とは別の視点でアドバイスがもらえたので納得した家づくりができました。', recommend: 'おすすめする' },
+            { score: 4.0, attributes: '40代・女性・愛知県・年収600万円〜800万円', date: '2026/02/27', tags: ['メーカー選び'], comment: 'Instagramをフォローしており、アンケートに答えたところすぐにDMをいただき、オンライン面談していただきました。自分たちだけでは知らないHMや、HMの特長なども詳しく教えてくださり、相談内容にマッチしたところをご紹介いただき、無事に契約できました。', recommend: 'おすすめする' },
+            { score: 5.0, attributes: '30代・女性・東京都・年収300万円〜400万円', date: '2026/02/25', tags: ['予算', 'スケジュール'], comment: '何がわからないかもわからない状態でしたが、丁寧に説明やアドバイスをくださったお陰で、まず最初にやるべきことが見つかったので相談して良かったです。', recommend: 'おすすめする' },
+            { score: 5.0, attributes: '20代・男性・山梨県・年収500万円〜600万円', date: '2026/02/22', tags: ['予算'], comment: '不安が払拭された。 ローンについて不安がありましたが、少し余裕ができました。 本日はありがとうございました。', recommend: 'おすすめする' },
+            { score: 5.0, attributes: '20代・女性・愛知県・年収800万円〜1000万円', date: '2026/02/20', tags: ['予算', 'メーカー選び'], comment: '初めての家づくりで何から始めたらいいかわからない中で、色々な紹介してくれる人と話ましたが、潟沼さんが一番中立的な立場で進めてくれ、安心しました。お断りするメーカーも潟沼さんからお断りしていただけたのでスムーズに進みました。またオンラインでお話もできたので子どもがいる中でまた直接相談は時間が難しいですが、家で顔を見て相談できてよかったです。', recommend: 'おすすめする' },
+            { score: 5.0, attributes: '30代・女性・千葉県・年収400万円〜500万円', date: '2026/02/19', tags: ['土地探し', 'メーカー選び', 'スケジュール'], comment: '何もわからない家づくりについて、進め方や、ハウスメーカーの特徴、様々な性能など、色々なことを教えてくださるので、とても勉強になりますし心強いです。 自分達にとって、どんな家にしたいかという希望も聞いてくださるので、満足度の高いお家づくりができると感じました。 また、予算に合ったハウスメーカーを教えて頂けるので、たくさんの中から調べなくてもいいのでありがたかったです。', recommend: 'おすすめする' },
+            { score: 5.0, attributes: '30代・女性・宮城県・年収800万円〜1000万円', date: '2026/02/18', tags: ['メーカー選び'], comment: '結構HM選びって労力がいるなぁと2社自分たちで検討して思っていたのですが、 相談させてもらうことで、 自分たちの理想に合うHMをご提案いただけたことが1番良かったです。 また、SNSなどで見た噂は本当なの・・・？というところも質問させていただき、メリットやデメリットもお伝えいただけたのが良かったです。', recommend: 'おすすめする' },
+            { score: 5.0, attributes: '40代・女性・山口県・年収600万円〜800万円', date: '2026/02/15', tags: ['予算', 'その他'], comment: '住宅購入を踏まえた家計について、直近から将来的なとこまで見据えたうえでの課題等、自分達では気付けていなかったことをご指摘、アドバイスを頂きました。 明確にアドバイスを頂き、今後家族皆が幸せに暮らす為には何をすべきか分かりました。 相談するに辺り迷いましたが、相談させて頂き本当に良かったと思います。 ありがとうございました。', recommend: 'おすすめする' },
+            { score: 4.0, attributes: '40代・男性・兵庫県・年収500万円〜600万円', date: '2026/02/15', tags: ['予算', 'メーカー選び', 'スケジュール'], comment: '夜遅い時間まで真摯にご対応頂きました。メーカー選びを相談させて頂いた流れで、予算設定の話題なり、自社のFPさまよりキャッシュフロー表の作成までサポート頂きました。 結果、自分達の身の丈にあった適切な予算を見える化でき、メーカー選び迷子から抜け出すことに繋がりました。', recommend: 'おすすめする' },
+            { score: 5.0, attributes: '20代・男性・神奈川県・年収400万円〜500万円', date: '2026/02/14', tags: ['予算', '土地探し', 'メーカー選び', 'スケジュール'], comment: 'ハウスメーカー選びで困ったところについて相談した際に、有益な情報を頂けたところがすごく良かったです。また、土地選びの際に、土地のメリットデメリットや、私たち自身がわからないところまで考えていただけたのですごく安心して土地を購入することができました。 ご紹介いただいたハウスメーカーさんで契約でき、展示場なども同行してくださったので前向きに検討することができました！', recommend: 'おすすめする' }
+        ];
+
+        const renderStars = (score) => {
+            let stars = '';
+            for (let i = 1; i <= 5; i++) {
+                if (score >= i) stars += '<i class="fa-solid fa-star text-yellow-400"></i>';
+                else if (score >= i - 0.5) stars += '<i class="fa-solid fa-star-half-stroke text-yellow-400"></i>';
+                else stars += '<i class="fa-regular fa-star text-yellow-400"></i>';
+            }
+            return `<span class="tracking-widest">${stars}</span><span class="ml-1 font-bold text-gray-700">${score.toFixed(1)}</span>`;
+        };
+
+        const buildReviewsSlider = () => {
+            const reviewsHtml = REVIEWS.map(r => `
+                <div class="shrink-0 w-[280px] sm:w-[320px] snap-center bg-white rounded-xl p-4 shadow-sm border border-gray-200 flex flex-col">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="text-sm">${renderStars(r.score)}</div>
+                        <div class="text-[10px] text-gray-500">${r.date}</div>
+                    </div>
+                    <div class="text-xs text-gray-600 font-bold mb-3 border-b border-gray-100 pb-2">${r.attributes}</div>
+                    <div class="mb-3 flex flex-wrap gap-1">
+                        ${r.tags.map(t => `<span class="bg-blue-50 text-blue-600 border border-blue-200 text-[9px] px-2 py-0.5 rounded-full">${t}</span>`).join('')}
+                    </div>
+                    <div class="text-xs text-gray-700 leading-relaxed mb-4 flex-grow overflow-y-auto max-h-[120px] custom-scrollbar">
+                        ${r.comment}
+                    </div>
+                    <div class="mt-auto bg-gray-50 rounded p-2 text-[10px] text-gray-600 flex items-center justify-center gap-1 border border-gray-100">
+                        <i class="fa-solid fa-desktop text-gray-500"></i> オンライン相談: <strong class="text-green-600">${r.recommend}</strong>
+                    </div>
+                </div>
+            `).join('');
+
+            return `
+                <div class="mt-8 mb-2">
+                    <h4 class="font-bold text-gray-800 text-center mb-4 text-sm sm:text-base"><i class="fa-solid fa-comments text-yellow-500 mr-2"></i>マイホームヒーローズの無料オンライン相談を利用いただいたお客様の声</h4>
+                    <div class="flex overflow-x-auto gap-3 snap-x snap-mandatory pb-4 hide-scrollbar px-1 items-stretch">
+                        ${reviewsHtml}
+                    </div>
+                </div>
+            `;
+        };
+
+        const validateName = (v) => {
+            const val = v.replace(/[\s　]/g, '');
+            if(val.length < 1) return '正しく入力してください';
+            // 追加：ひらがな・カタカナ・アルファベットの1文字のみは無効とする（漢字1文字は許可）
+            if(/^[ぁ-んァ-ヶa-zA-Z]$/.test(val)) return '1文字のひらがな・カタカナ・アルファベットは入力できません';
+            if(!/^[ぁ-んァ-ヶ一-龥々a-zA-Z]+$/.test(val)) return '記号や数字を含まない、正しいお名前をご入力ください';
+            if(/(.)\1{2,}/.test(val)) return '無効な文字列が含まれています';
+            if(/テスト|てすと|test|dummy|ダミー|ああ|いい|うう|ええ|おお/i.test(val)) return '無効な文字列が含まれています';
+            return true;
+        };
+
+        const validateEmail = (v) => {
+            if(!/^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/.test(v)) return '有効なメールアドレスを入力してください';
+            const localPart = v.split('@')[0].toLowerCase();
+            if(/test|dummy|sample|hoge|fuga/i.test(localPart)) return 'このメールアドレスは登録できません';
+            if(/(.)\1{4,}/.test(localPart)) return '不正な形式のメールアドレスです';
+            return true;
+        };
+
+        const QUESTIONS = [
+            { id: 'greet', type: 'info', text: 'こんにちは！住宅ローン診断を開始します。🏠' },
+            { id: 'diagnosisMode', type: 'choice', text: 'どちらの判定方法をご希望ですか？', options: [{label:'借入希望額から判定する', value:'fromLoan'}, {label:'年収から判定する', value:'fromIncome'}] },
+            { id: 'yourIncome', type: 'number', text: 'あなたの年収を教えてください', unit: '万円', min: 0, max: 10000 },
+            { id: 'spouseIncome', type: 'number', text: '配偶者の年収を教えてください\n(いない場合は0を入力)', unit: '万円', min: 0 },
+            { id: 'yourAge', type: 'number', text: 'あなたの年齢を教えてください', unit: '歳', min: 18, max: 80 },
+            { id: 'spouseAge', type: 'number', text: '配偶者の年齢を教えてください\n(いない場合は0を入力)', unit: '歳', min: 0, max: 80 },
+            { id: 'childrenCount', type: 'choice', text: 'お子様はいらっしゃいますか？', options: [{label:'いない', value:0}, {label:'1人', value:1}, {label:'2人', value:2}, {label:'3人以上', value:3}] },
+            { id: 'child1Age', type: 'number', text: '第1子のお子様の年齢を教えてください', unit: '歳', min: 0, condition: s => s.childrenCount >= 1 },
+            { id: 'child2Age', type: 'number', text: '第2子のお子様の年齢を教えてください', unit: '歳', min: 0, condition: s => s.childrenCount >= 2 },
+            { id: 'child3Age', type: 'number', text: '第3子のお子様の年齢を教えてください', unit: '歳', min: 0, condition: s => s.childrenCount >= 3 },
+            { id: 'prefecture', type: 'select', text: 'お住まいの都道府県を教えてください', options: PREFECTURES },
+            { id: 'buildingStatus', type: 'select', text: '家づくりの状況を教えてください！', options: [
+                '①まだ資料請求や展示場見学をしたことがない', 
+                '②資料請求や見学はしたが、まだ相談はしていない', 
+                '③複数の会社と相談を始めている',
+                '④提案をもとに2〜3社で比較している',
+                '⑤本命1社と詳細を詰めているところ（2社以内に絞っている）',
+                '⑥すでに契約し、設計や手続きが進んでいる'
+            ] },
+            { id: 'hmCount12', type: 'select', text: '気になっているハウスメーカーは何社ありますか？', options: ['1', '2', '3', '4', '5'], unit: '社', condition: s => s.buildingStatus && (s.buildingStatus.startsWith('①') || s.buildingStatus.startsWith('②')) },
+            { id: 'hmName12_1', type: 'select', text: '1社目の気になっているハウスメーカーを選択してください', options: HM_OPTIONS, condition: s => s.hmCount12 && parseInt(s.hmCount12) >= 1 },
+            { id: 'hmName12_1_other', type: 'text', text: 'その他のハウスメーカー名を教えてください', condition: s => s.hmName12_1 === 'その他' },
+            { id: 'hmName12_2', type: 'select', text: '2社目の気になっているハウスメーカーを選択してください', options: HM_OPTIONS, condition: s => s.hmCount12 && parseInt(s.hmCount12) >= 2 },
+            { id: 'hmName12_2_other', type: 'text', text: 'その他のハウスメーカー名を教えてください', condition: s => s.hmName12_2 === 'その他' },
+            { id: 'hmName12_3', type: 'select', text: '3社目の気になっているハウスメーカーを選択してください', options: HM_OPTIONS, condition: s => s.hmCount12 && parseInt(s.hmCount12) >= 3 },
+            { id: 'hmName12_3_other', type: 'text', text: 'その他のハウスメーカー名を教えてください', condition: s => s.hmName12_3 === 'その他' },
+            { id: 'hmName12_4', type: 'select', text: '4社目の気になっているハウスメーカーを選択してください', options: HM_OPTIONS, condition: s => s.hmCount12 && parseInt(s.hmCount12) >= 4 },
+            { id: 'hmName12_4_other', type: 'text', text: 'その他のハウスメーカー名を教えてください', condition: s => s.hmName12_4 === 'その他' },
+            { id: 'hmName12_5', type: 'select', text: '5社目の気になっているハウスメーカーを選択してください', options: HM_OPTIONS, condition: s => s.hmCount12 && parseInt(s.hmCount12) >= 5 },
+            { id: 'hmName12_5_other', type: 'text', text: 'その他のハウスメーカー名を教えてください', condition: s => s.hmName12_5 === 'その他' },
+            { id: 'hmCount345', type: 'select', text: '検討している会社数は何社ありますか？', options: ['1', '2', '3', '4', '5'], unit: '社', condition: s => s.buildingStatus && (s.buildingStatus.startsWith('③') || s.buildingStatus.startsWith('④') || s.buildingStatus.startsWith('⑤')) },
+            { id: 'hmName345_1', type: 'select', text: '1社目の検討しているハウスメーカーを選択してください', options: HM_OPTIONS, condition: s => s.hmCount345 && parseInt(s.hmCount345) >= 1 },
+            { id: 'hmName345_1_other', type: 'text', text: 'その他のハウスメーカー名を教えてください', condition: s => s.hmName345_1 === 'その他' },
+            { id: 'hmName345_2', type: 'select', text: '2社目の検討しているハウスメーカーを選択してください', options: HM_OPTIONS, condition: s => s.hmCount345 && parseInt(s.hmCount345) >= 2 },
+            { id: 'hmName345_2_other', type: 'text', text: 'その他のハウスメーカー名を教えてください', condition: s => s.hmName345_2 === 'その他' },
+            { id: 'hmName345_3', type: 'select', text: '3社目の検討しているハウスメーカーを選択してください', options: HM_OPTIONS, condition: s => s.hmCount345 && parseInt(s.hmCount345) >= 3 },
+            { id: 'hmName345_3_other', type: 'text', text: 'その他のハウスメーカー名を教えてください', condition: s => s.hmName345_3 === 'その他' },
+            { id: 'hmName345_4', type: 'select', text: '4社目の検討しているハウスメーカーを選択してください', options: HM_OPTIONS, condition: s => s.hmCount345 && parseInt(s.hmCount345) >= 4 },
+            { id: 'hmName345_4_other', type: 'text', text: 'その他のハウスメーカー名を教えてください', condition: s => s.hmName345_4 === 'その他' },
+            { id: 'hmName345_5', type: 'select', text: '5社目の検討しているハウスメーカーを選択してください', options: HM_OPTIONS, condition: s => s.hmCount345 && parseInt(s.hmCount345) >= 5 },
+            { id: 'hmName345_5_other', type: 'text', text: 'その他のハウスメーカー名を教えてください', condition: s => s.hmName345_5 === 'その他' },
+            { id: 'contractedHmName', type: 'select', text: '契約したハウスメーカーを選択してください', options: HM_OPTIONS, condition: s => s.buildingStatus && s.buildingStatus.startsWith('⑥') },
+            { id: 'contractedHmName_other', type: 'text', text: 'その他のハウスメーカー名を教えてください', condition: s => s.contractedHmName === 'その他' },
+            
+            { id: 'currentSavings', type: 'number', text: '現在の貯金額を教えてください', unit: '万円', min: 0 },
+            { id: 'desiredLoanAmount', type: 'number', text: '借入希望額を教えてください\n(希望がない場合は空欄可)', unit: '万円', min: 0 },
+            { id: 'interestRate', type: 'slider', text: '想定金利を教えてください', min: 0.1, max: 3.0, step: 0.1, default: 0.8, unit: '%' },
+            { id: 'loanPeriod', type: 'number', text: '返済期間を教えてください', unit: '年', min: 1, max: 50 },
+            
+            { id: 'lastName', type: 'text', text: '【姓】を教えてください\n<span class="text-[10px] text-red-500 font-bold mt-1 block leading-tight"><i class="fa-solid fa-triangle-exclamation"></i> 架空のお名前や不正な入力と判断された場合、無料面談や診断結果の提供をお断りする場合がございます。</span>', validate: validateName },
+            { id: 'firstName', type: 'text', text: '【名】を教えてください', validate: validateName },
+            { id: 'email', type: 'email', text: 'メールアドレスを教えてください\n<span class="text-[10px] text-red-500 font-bold mt-1 block leading-tight"><i class="fa-solid fa-triangle-exclamation"></i> ご本人確認および面談の日程調整に使用いたします。<br>※不正なアドレス（使い捨て等）はシステムにより自動でブロックされます。</span>', validate: validateEmail },
+            { id: 'agreementAccepted', type: 'choice', text: '最後に、利用規約および個人情報の取扱いにご同意ください。<br><br><a href="javascript:void(0)" onclick="openTermsModal()" class="text-primary underline font-bold text-sm hover:text-blue-700 flex items-center gap-1 mb-2"><i class="fa-solid fa-file-contract"></i> 利用規約について確認する</a><a href="javascript:void(0)" onclick="openPrivacyModal()" class="text-primary underline font-bold text-sm hover:text-blue-700 flex items-center gap-1"><i class="fa-solid fa-shield-halved"></i> 個人情報の取扱いについて確認する</a>', options: [{label:'同意する', value:true}] },
+            
+            { id: 'check_duplicate', type: 'action' },
+
+            { id: 'currentLivingCost', type: 'number', text: '毎月の「基本生活費」はだいたい何万円ですか？\n※食費・日用品・水道光熱費・通信費・医療費など\n(住宅・車・教育・保険・投資は除く)', unit: '万円', min: 0 },
+            { id: 'carCount', type: 'number', text: '所有している車の台数を教えてください', unit: '台', min: 0 },
+            { id: 'currentCarCost', type: 'number', text: '車にかかる毎月の費用は何万円ですか？\n※ローン、ガソリン、保険、駐車場など\n(分からない場合は空欄可)', unit: '万円', min: 0, condition: s => s.carCount > 0 },
+            { id: 'currentInsurance', type: 'number', text: '毎月の「生命保険料」は何万円ですか？\n※死亡・医療・がん保険など\n(分からない場合は空欄可)', unit: '万円', min: 0 },
+            { id: 'currentEntertainment', type: 'number', text: '毎月の「交際費・レジャー費」は何万円ですか？\n※外食・旅行・趣味・お出かけなど\n(分からない場合は空欄可)', unit: '万円', min: 0 },
+            { id: 'currentNISA', type: 'number', text: '毎月の「NISA積立額」は何万円ですか？\n(無い場合は0を入力)', unit: '万円', min: 0 },
+            { id: 'currentIDeCo', type: 'number', text: '毎月の「iDeCo掛金」は何万円ですか？\n(無い場合は0を入力)', unit: '万円', min: 0 },
+            { id: 'tempExpense', type: 'number', text: '今後1〜3年以内に予定している「一時的な支出」は総額何万円くらいですか？\n※出産、車購入、家具家電、引越しなど\n(無い場合は0を入力)', unit: '万円', min: 0 },
+
+            { id: 'show_final_booking', type: 'action' }
+        ];
+
+        const Logic = {
+            calculateTakeHomeRate(totalIncome) {
+                if (totalIncome >= 1200) return 0.74;
+                if (totalIncome >= 900) return 0.76;
+                if (totalIncome >= 600) return 0.78;
+                return 0.80;
+            },
+            calcLoanAmount(monthlyPayment, rate, period) {
+                if (monthlyPayment <= 0) return 0;
+                const mRate = (rate / 100) / 12;
+                const mCount = period * 12;
+                if (mRate === 0) return monthlyPayment * mCount;
+                return monthlyPayment * ((1 - Math.pow(1 + mRate, -mCount)) / mRate);
+            },
+            calcMonthlyPayment(loanAmount, rate, period) {
+                if (loanAmount <= 0) return 0;
+                const mRate = (rate / 100) / 12;
+                const mCount = period * 12;
+                if (mRate === 0) return loanAmount / mCount;
+                return loanAmount * mRate * Math.pow(1 + mRate, mCount) / (Math.pow(1 + mRate, mCount) - 1);
+            },
+            analyzeFP(userData) {
+                const u = userData;
+                const totalIncome = (u.yourIncome || 0) + (u.spouseIncome || 0);
+                const takeHomeRate = this.calculateTakeHomeRate(totalIncome);
+                const monthlyTakeHome = (totalIncome * takeHomeRate) / 12;
+
+                const limit25Monthly = monthlyTakeHome * 0.25;
+
+                const interestRate = u.interestRate || 1.0;
+                const loanPeriod = u.loanPeriod || 35;
+                const desiredLoanAmount = u.desiredLoanAmount || 0;
+
+                const loanAmount25 = this.calcLoanAmount(limit25Monthly, interestRate, loanPeriod);
+                const desiredMonthlyPayment = this.calcMonthlyPayment(desiredLoanAmount, interestRate, loanPeriod);
+
+                const desiredRatio = desiredLoanAmount > 0 ? (desiredMonthlyPayment / monthlyTakeHome) * 100 : 0;
+                let score1 = { rank: '-', text: '未入力', color: 'text-gray-500' };
+                if (desiredLoanAmount > 0) {
+                    if (desiredRatio < 20) score1 = { rank: 'A', text: 'かなり安全', color: 'text-blue-500' };
+                    else if (desiredRatio <= 25) score1 = { rank: 'B', text: '安全圏', color: 'text-green-500' };
+                    else if (desiredRatio <= 30) score1 = { rank: 'C', text: 'やや注意', color: 'text-yellow-500' };
+                    else if (desiredRatio <= 35) score1 = { rank: 'D', text: '危険水準', color: 'text-orange-500' };
+                    else score1 = { rank: 'E', text: '見直し推奨', color: 'text-red-500' };
+                }
+
+                let score2 = { rank: 'B', text: '標準的', color: 'text-green-500' };
+
+                return {
+                    totalIncome,
+                    monthlyTakeHome,
+                    limit25Monthly,
+                    loanAmount25,
+                    desiredMonthlyPayment,
+                    desiredLoanAmount,
+                    interestRate,
+                    loanPeriod,
+                    score1,
+                    score2
+                };
+            }
+        };
+
+        class App {
+            constructor() {
+                this.state = {
+                    qIndex: 0,
+                    userData: {},
+                    results: {},
+                    history: []
+                };
+                this.restoring = false;
+                this.chatArea = document.getElementById('chatArea');
+                this.inputContainer = document.getElementById('inputContainer');
+                
+                trackEvent('simulation_initialized');
+                this.loadState();
+            }
+
+            saveState() {
+                if (!this.restoring) {
+                    localStorage.setItem('loanSimulator', JSON.stringify(this.state));
+                }
+            }
+
+            loadState() {
+                const saved = localStorage.getItem('loanSimulator');
+                if (saved) {
+                    try {
+                        const parsed = JSON.parse(saved);
+                        if (parsed.qIndex >= QUESTIONS.length) {
+                            this.reset();
+                        } else {
+                            this.state = parsed;
+                            if (!this.state.history) this.state.history = [];
+                            
+                            this.chatArea.innerHTML = '';
+                            this.restoring = true;
+                            
+                            const html = `
+                                <div class="flex gap-3 message-enter max-w-[95%] sm:max-w-[85%]">
+                                    <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex-shrink-0 flex items-center justify-center mt-1 shadow bg-white overflow-hidden border border-gray-100">
+                                        <img src="https://loan-diagnosis-admin.pages.dev/images/logo.png" alt="Bot" class="w-full h-full object-cover">
+                                    </div>
+                                    <div class="bg-yellow-50 border border-yellow-200 p-3 sm:p-4 rounded-2xl rounded-tl-none shadow-sm text-gray-800 leading-relaxed text-sm sm:text-base w-full font-bold">
+                                        💡 前回入力いただいた内容を復元しました。続きから診断を再開します。
+                                    </div>
+                                </div>
+                            `;
+                            this.chatArea.insertAdjacentHTML('beforeend', html);
+
+                            this.state.history.forEach(item => {
+                                if (item.type === 'bot') {
+                                    if (item.isCard) {
+                                        this.chatArea.insertAdjacentHTML('beforeend', item.text);
+                                    } else {
+                                        this.addBotMessage(item.text, true);
+                                    }
+                                } else if (item.type === 'user') {
+                                    this.addUserMessage(item.text, true);
+                                }
+                            });
+                            
+                            this.restoring = false;
+                            this.scrollToBottom();
+                            this.updateProgress();
+                            
+                            this.processCurrentQuestion();
+                            trackEvent('simulation_resumed', { qIndex: this.state.qIndex });
+                        }
+                    } catch(e) {
+                        this.reset();
+                    }
+                } else {
+                    this.init();
+                }
+            }
+
+            reset() {
+                localStorage.removeItem('loanSimulator');
+                this.state = { qIndex: 0, userData: {}, results: {}, history: [] };
+                this.chatArea.innerHTML = '';
+                this.inputContainer.innerHTML = '';
+                this.restoring = false;
+                trackEvent('simulation_reset');
+                this.init();
+            }
+
+            init() {
+                trackEvent('simulation_started');
+                this.processCurrentQuestion();
+            }
+
+            updateProgress() {
+                const bar = document.getElementById('progressBar');
+                if (bar) {
+                    const progress = (this.state.qIndex / QUESTIONS.length) * 100;
+                    bar.style.width = `${progress}%`;
+                }
+            }
+
+            async processCurrentQuestion() {
+                if (this.state.qIndex >= QUESTIONS.length) {
+                    this.updateProgress();
+                    return;
+                }
+
+                this.updateProgress();
+                const q = QUESTIONS[this.state.qIndex];
+
+                if (q.condition && !q.condition(this.state.userData)) {
+                    this.state.qIndex++;
+                    this.processCurrentQuestion();
+                    return;
+                }
+
+                if (q.type === 'action') {
+                    await this.handleAction(q.id);
+                    return;
+                }
+
+                this.inputContainer.innerHTML = ''; 
+                this.showTyping();
+                
+                await new Promise(r => setTimeout(r, 600));
+                this.hideTyping();
+
+                this.addBotMessage(q.text);
+
+                if (q.type === 'info') {
+                    this.state.qIndex++;
+                    this.processCurrentQuestion();
+                    return;
+                }
+
+                this.buildInputUI(q);
+                this.scrollToBottom();
+            }
+
+            async communicateWithGAS(payload) {
+                const GAS_URL = "https://script.google.com/macros/s/AKfycbzfMA9AQybe6sIN-PJ5PQganoj242Jl5za7x9TPSoakfRcW65dVuL_E_c1k_OLnHQdv8w/exec"; 
+                try {
+                    const response = await fetch(GAS_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain' },
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await response.json();
+                    return result;
+                } catch (error) {
+                    console.error("GAS通信エラー:", error);
+                    return { status: 'error' }; 
+                }
+            }
+
+            async fetchAIAdvice() {
+                const u = this.state.userData;
+                const r = this.state.results.fp;
+                const totalIncome = (u.yourIncome || 0) + (u.spouseIncome || 0);
+
+                const systemPrompt = "あなたはユーザーに寄り添う、親身で丁寧なアドバイスが評判の住宅ローン専門FPです。出力はHTMLの<li>タグのみを使用し、箇条書きで3点出力してください。決して高圧的・否定的な言葉（無謀、破綻、〜しなさい等）は使わず、「〜ですね」「〜を一緒に確認しましょう」「〜をおすすめします」といった優しく前向きな口調で、的確なリスク喚起とアドバイスを行ってください。挨拶などは不要です。";
+                
+                const userPrompt = `
+以下のユーザー情報を元に、この人が住宅購入において「FPとの面談で相談して解決すべき、将来の家計リスクや懸念点」を3つ優しく指摘してください。ユーザーに直接語りかけるトーンで書いてください。
+文字数は1つの<li>につき60文字程度で簡潔に。
+
+【ユーザー情報】
+- 世帯年収: ${Math.floor(totalIncome)}万円
+- 年齢: 本人 ${u.yourAge || 0}歳 / 配偶者 ${u.spouseAge ? u.spouseAge + '歳' : 'なし'}
+- 家族構成: 子供${u.childrenCount || 0}人
+- 現在の貯金: ${u.currentSavings || 0}万円
+- 借入希望額: ${u.desiredLoanAmount || 0}万円
+- 現在の月間生活費: ${u.currentLivingCost || 0}万円
+- 毎月の投資額(NISA/iDeCo): ${(u.currentNISA || 0) + (u.currentIDeCo || 0)}万円
+- 車の所有: ${u.carCount || 0}台
+- 予定している一時支出: ${u.tempExpense || 0}万円
+- 年収から見た借入目安(25%ルール): 約${Math.floor(r.loanAmount25)}万円
+`;
+                const aiResponse = await this.callGeminiAPI(systemPrompt, userPrompt);
+                return aiResponse.replace(/```html/g, '').replace(/```/g, '').trim();
+            }
+
+            async handleAction(actionId) {
+                this.inputContainer.innerHTML = '';
+                this.showTyping();
+                
+                if (actionId === 'check_duplicate') {
+                    let hmList = [];
+                    const u = this.state.userData;
+                    if (u.buildingStatus) {
+                        if (u.buildingStatus.startsWith('①') || u.buildingStatus.startsWith('②')) {
+                            const count = parseInt(u.hmCount12) || 0;
+                            for(let i=1; i<=count; i++) {
+                                const hm = u[`hmName12_${i}`];
+                                const other = u[`hmName12_${i}_other`];
+                                if(hm === 'その他' && other) hmList.push(other);
+                                else if(hm && hm !== 'その他') hmList.push(hm);
+                            }
+                        } else if (u.buildingStatus.startsWith('③') || u.buildingStatus.startsWith('④') || u.buildingStatus.startsWith('⑤')) {
+                            const count = parseInt(u.hmCount345) || 0;
+                            for(let i=1; i<=count; i++) {
+                                const hm = u[`hmName345_${i}`];
+                                const other = u[`hmName345_${i}_other`];
+                                if(hm === 'その他' && other) hmList.push(other);
+                                else if(hm && hm !== 'その他') hmList.push(hm);
+                            }
+                        } else if (u.buildingStatus.startsWith('⑥')) {
+                            const hm = u.contractedHmName;
+                            const other = u.contractedHmName_other;
+                            if(hm === 'その他' && other) hmList.push(other);
+                            else if(hm && hm !== 'その他') hmList.push(hm);
+                        }
+                    }
+                    const selectedHM = hmList.join('、');
+
+                    const payload = { 
+                        ...this.state.userData, 
+                        fullName: (this.state.userData.lastName || '') + ' ' + (this.state.userData.firstName || ''),
+                        selectedHM: selectedHM,
+                        action: 'saveInterim' 
+                    };
+                    const res = await this.communicateWithGAS(payload);
+                    this.hideTyping();
+                    
+                    if (res.status === 'duplicate') {
+                        trackEvent('duplicate_user_detected');
+                        this.showDuplicateBookingCard();
+                    } else {
+                        trackEvent('interim_phase_completed');
+                        this.state.results.fp = Logic.analyzeFP(this.state.userData);
+                        this.showInterimCard(this.state.results.fp);
+                    }
+                } 
+                else if (actionId === 'show_final_booking') {
+                    const aiAdviceHtml = await this.fetchAIAdvice();
+                    this.state.results.aiAdvice = aiAdviceHtml;
+
+                    const payload = { 
+                        ...this.state.userData, 
+                        fullName: (this.state.userData.lastName || '') + ' ' + (this.state.userData.firstName || ''),
+                        loanAmount25: Math.floor(this.state.results.fp.loanAmount25 || 0),
+                        score1Rank: this.state.results.fp.score1.rank,
+                        score2Rank: this.state.results.fp.score2.rank,
+                        aiAdviceText: aiAdviceHtml.replace(/<[^>]*>?/gm, ' / ').trim(),
+                        action: 'updateFinal' 
+                    };
+
+                    await this.communicateWithGAS(payload);
+                    
+                    this.hideTyping();
+                    trackEvent('final_phase_completed');
+                    this.showFinalBookingCard();
+                }
+            }
+
+            resumeDetailedChat() {
+                const btn = document.getElementById('interimCtaBtnContainer');
+                if (btn) {
+                    btn.style.display = 'none';
+                    // Update history so the button disappears on reload
+                    for (let i = this.state.history.length - 1; i >= 0; i--) {
+                        if (this.state.history[i].isCard && this.state.history[i].text.includes('interimCtaBtnContainer')) {
+                            this.state.history[i].text = this.state.history[i].text.replace(/<div class="mt-4" id="interimCtaBtnContainer">[\s\S]*?<\/div>/, '');
+                            this.saveState();
+                            break;
+                        }
+                    }
+                }
+                
+                trackEvent('resume_detailed_chat_clicked');
+                this.addUserMessage("現在の支出を加味して正確に計算する");
+                this.state.qIndex++;
+                this.processCurrentQuestion();
+            }
+
+            submitAnswer(value, displayValue) {
+                const q = QUESTIONS[this.state.qIndex];
+                
+                if (q.validate && value !== undefined) {
+                    const validResult = q.validate(value, this.state); 
+                    if (validResult !== true) {
+                        alert(validResult);
+                        return;
+                    }
+                }
+
+                if (value !== undefined) {
+                    this.state.userData[q.id] = value;
+                }
+
+                trackEvent('answer_submitted', { question_id: q.id, answered: value !== undefined });
+                this.addUserMessage(displayValue !== undefined ? displayValue : (value !== undefined ? value + (q.unit || '') : '未入力'));
+
+                this.state.qIndex++;
+                this.processCurrentQuestion();
+            }
+
+            buildInputUI(q) {
+                let html = '';
+                
+                // 動的プレースホルダー
+                let placeholder = 'ここに入力...';
+                if (q.id === 'yourAge' || q.id === 'spouseAge') placeholder = '例: 35';
+                else if (q.id === 'yourIncome' || q.id === 'spouseIncome') placeholder = '例: 600';
+                else if (q.id === 'lastName') placeholder = '例: 山田';
+                else if (q.id === 'firstName') placeholder = '例: 太郎';
+                else if (q.type === 'email') placeholder = '例: sample@example.com';
+                else if (q.type === 'number') placeholder = '例: 0';
+                
+                if (q.type === 'text' || q.type === 'email' || q.type === 'number') {
+                    const inputType = q.type === 'number' ? 'number' : (q.type === 'email' ? 'email' : 'text');
+                    html = `
+                        <div class="flex w-full gap-2 px-2">
+                            <input type="${inputType}" id="ansInput" 
+                                class="flex-1 border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary text-lg transition-shadow" 
+                                placeholder="${placeholder}" ${q.min !== undefined ? `min="${q.min}"` : ''} ${q.max !== undefined ? `max="${q.max}"` : ''}>
+                            ${q.unit ? `<span class="flex items-center text-gray-600 font-bold">${q.unit}</span>` : ''}
+                            <button onclick="app.handleTextSubmit()" class="bg-primary text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-600 transition shadow-md whitespace-nowrap">送信</button>
+                        </div>
+                    `;
+                } 
+                else if (q.type === 'choice') {
+                    html = `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full px-4 overflow-y-auto no-scrollbar max-h-full pb-2">`;
+                    q.options.forEach(opt => {
+                        html += `<button onclick="app.submitAnswer(${typeof opt.value === 'string' ? `'${opt.value}'` : opt.value}, '${opt.label}')" class="bg-white border-2 border-primary text-primary font-bold py-3 px-4 rounded-xl hover:bg-blue-50 transition shadow-sm text-sm text-left sm:text-center leading-snug flex items-center justify-center">${opt.label}</button>`;
+                    });
+                    html += `</div>`;
+                }
+                else if (q.type === 'select') {
+                    html = `
+                        <div class="flex w-full gap-2 px-4">
+                            <select id="ansInput" class="flex-1 border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary text-lg bg-white transition-shadow">
+                                <option value="">選択してください</option>
+                                ${q.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                            </select>
+                            <button onclick="app.handleTextSubmit()" class="bg-primary text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-600 transition shadow-md">送信</button>
+                        </div>
+                    `;
+                }
+                else if (q.type === 'slider') {
+                    html = `
+                        <div class="w-full px-6 flex flex-col gap-4">
+                            <div class="flex justify-between text-gray-600 font-bold">
+                                <span>${q.min}${q.unit}</span>
+                                <span id="sliderVal" class="text-primary text-xl">${q.default.toFixed(1)}${q.unit}</span>
+                                <span>${q.max}${q.unit}</span>
+                            </div>
+                            <input type="range" id="ansInput" min="${q.min}" max="${q.max}" step="${q.step}" value="${q.default}" 
+                                class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+                                oninput="document.getElementById('sliderVal').innerText = parseFloat(this.value).toFixed(1) + '${q.unit}'">
+                            <button onclick="app.handleTextSubmit()" class="w-full bg-primary text-white py-3 rounded-lg font-bold hover:bg-blue-600 transition shadow-md mt-2">この金利で計算する</button>
+                        </div>
+                    `;
+                }
+
+                this.inputContainer.innerHTML = html;
+                
+                // 自動フォーカス（スマホ等でのキーボード挙動考慮のため少し遅延）
+                const inputEl = document.getElementById('ansInput');
+                if (inputEl && (q.type === 'text' || q.type === 'email' || q.type === 'number')) {
+                    setTimeout(() => {
+                        inputEl.focus();
+                    }, 100);
+                    inputEl.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') this.handleTextSubmit();
+                    });
+                }
+            }
+
+            handleTextSubmit() {
+                const inputEl = document.getElementById('ansInput');
+                if (!inputEl) return;
+                
+                const q = QUESTIONS[this.state.qIndex];
+                let val = inputEl.value;
+
+                const optionalFields = ['desiredLoanAmount', 'currentLivingCost', 'currentCarCost', 'currentInsurance', 'currentEntertainment', 'currentNISA', 'currentIDeCo', 'tempExpense', 'hmName12_1_other', 'hmName12_2_other', 'hmName12_3_other', 'hmName12_4_other', 'hmName12_5_other', 'hmName345_1_other', 'hmName345_2_other', 'hmName345_3_other', 'hmName345_4_other', 'hmName345_5_other', 'contractedHmName_other'];
+                if (val === '' && optionalFields.includes(q.id)) {
+                    this.submitAnswer(undefined, '未入力');
+                    return;
+                }
+
+                if (val === '') return;
+                if (q.type === 'number' || q.type === 'slider') val = Number(val);
+
+                this.submitAnswer(val, val + (q.unit || ''));
+            }
+
+            addBotMessage(text, isRestoring = false) {
+                const formattedText = text.replace(/\n/g, '<br>');
+                const html = `
+                    <div class="flex gap-3 message-enter max-w-[95%] sm:max-w-[85%]">
+                        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex-shrink-0 flex items-center justify-center mt-1 shadow bg-white overflow-hidden border border-gray-100">
+                            <img src="https://loan-diagnosis-admin.pages.dev/images/logo.png" alt="Bot" class="w-full h-full object-cover">
+                        </div>
+                        <div class="bg-white p-3 sm:p-4 rounded-2xl rounded-tl-none shadow-sm text-gray-800 leading-relaxed text-sm sm:text-base w-full">
+                            ${formattedText}
+                        </div>
+                    </div>
+                `;
+                this.chatArea.insertAdjacentHTML('beforeend', html);
+                this.scrollToBottom();
+                
+                if (!this.restoring && !isRestoring) {
+                    this.state.history.push({ type: 'bot', text, isCard: false });
+                    this.saveState();
+                }
+            }
+
+            addUserMessage(text, isRestoring = false) {
+                const html = `
+                    <div class="flex gap-3 justify-end message-enter w-full">
+                        <div class="bg-primary text-white p-3 rounded-2xl rounded-tr-none shadow-sm text-sm sm:text-base max-w-[85%]">
+                            ${text} <i class="fa-solid fa-check ml-1 opacity-70 text-xs"></i>
+                        </div>
+                    </div>
+                `;
+                this.chatArea.insertAdjacentHTML('beforeend', html);
+                this.scrollToBottom();
+                
+                if (!this.restoring && !isRestoring) {
+                    this.state.history.push({ type: 'user', text });
+                    this.saveState();
+                }
+            }
+
+            showTyping() {
+                if (document.getElementById('typingIndicator')) return;
+                const html = `
+                    <div id="typingIndicator" class="flex gap-3 message-enter">
+                        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex-shrink-0 flex items-center justify-center mt-1 shadow bg-white overflow-hidden border border-gray-100">
+                            <img src="https://loan-diagnosis-admin.pages.dev/images/logo.png" alt="Bot" class="w-full h-full object-cover">
+                        </div>
+                        <div class="bg-white px-4 py-3 rounded-2xl rounded-tl-none shadow-sm flex items-center typing-indicator">
+                            <span></span><span></span><span></span>
+                        </div>
+                    </div>
+                `;
+                this.chatArea.insertAdjacentHTML('beforeend', html);
+                this.scrollToBottom();
+            }
+
+            hideTyping() {
+                const el = document.getElementById('typingIndicator');
+                if (el) el.remove();
+            }
+
+            scrollToBottom() {
+                setTimeout(() => {
+                    this.chatArea.scrollTop = this.chatArea.scrollHeight;
+                }, 50);
+            }
+
+            showDuplicateBookingCard() {
+                const uName = (this.state.userData.lastName || '') + ' ' + (this.state.userData.firstName || '');
+                const finalHtml = `
+                    <div class="flex gap-3 message-enter w-full max-w-[95%] sm:max-w-[85%] mx-auto mt-2 mb-4">
+                        <div class="bg-white border-[3px] border-orange-400 rounded-xl shadow-xl w-full overflow-hidden mb-4">
+                            <div class="bg-orange-500 text-white text-center py-3 font-bold text-base tracking-wide flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-circle-exclamation text-xl"></i> 過去に診断をご利用いただいております
+                            </div>
+                            <div class="p-4 sm:p-6 flex flex-col">
+                                <p class="text-gray-800 font-bold text-sm sm:text-base mb-4 leading-relaxed">
+                                    ${uName}さん、再度のご利用ありがとうございます。<br><br>
+                                    ご入力いただいたメールアドレスは、すでに当シミュレーターをご利用いただいている履歴がございます。
+                                </p>
+                                <div class="bg-orange-50 border border-orange-200 rounded p-4 mb-5 text-sm text-gray-700 shadow-sm">
+                                    <p class="font-bold text-orange-800 mb-2">💡 さらに詳しいご相談は無料面談にて承ります</p>
+                                    <p class="leading-relaxed">シミュレーションの再実施ではなく、実際の家計状況により深く踏み込んだ「あなた専用の返済プラン」や「家計改善案」を作成できる無料FP相談をぜひご利用ください。</p>
+                                </div>
+                                <div class="bg-blue-50 border-2 border-blue-200 rounded-xl p-5 sm:p-6 text-center shadow-sm flex flex-col items-center">
+                                    <h4 class="font-bold text-blue-800 text-lg sm:text-xl mb-3"><i class="fa-solid fa-video"></i> プロのFPとオンラインで答え合わせ</h4>
+                                    <p class="text-sm text-gray-700 mb-6 text-left leading-relaxed w-full">
+                                        あなた専用の「無理のない返済プラン」と「家計改善案」を無料で作成・お渡しします。<br class="hidden sm:block">このまま進めて数百万円損をしないために、まずは一度ご相談ください。
+                                    </p>
+                                    
+                                    <div id="calendar-booking-target-dup" class="w-full flex justify-center min-h-[50px] mb-4">
+                                        <!-- Google Calendar Button loads here -->
+                                    </div>
+
+                                    <p class="text-[11px] sm:text-xs text-red-600 font-bold bg-white px-4 py-2 rounded-full border border-red-200 shadow-sm inline-block">
+                                        <i class="fa-solid fa-circle-exclamation mr-1"></i> ※予約が完了しましたら、この画面は閉じて終了してください。
+                                    </p>
+                                </div>
+                                
+                                ${buildReviewsSlider()}
+                                
+                                <!-- IE-LOG バナー追加 -->
+                                <div class="mt-8 border-t border-dashed border-gray-300 pt-6">
+                                    <h4 class="font-bold text-gray-800 text-center mb-4 text-sm sm:text-base">
+                                        <i class="fa-solid fa-building text-blue-500 mr-2"></i>ハウスメーカー選びでお悩みの方へ
+                                    </h4>
+                                    <a href="https://myhomeheroe--review.pages.dev/" target="_blank" rel="noopener noreferrer" class="block rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow hover:opacity-95 border border-gray-200 bg-gray-100 mt-2">
+                                        <img src="https://frightened-moccasin-hbgxdwxauz.edgeone.app/ホワイト%20黒%20飲食店%20レストラン%20カフェ%20LINEリッチメニュー%20(9).png" alt="マイホームヒーローズ リアルな口コミ 無料で見れる" class="w-full h-auto object-cover" onerror="this.src='https://placehold.co/800x500/e2e8f0/64748b?text=MyHomeHeroes+Review+Site';">
+                                    </a>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                this.chatArea.insertAdjacentHTML('beforeend', finalHtml);
+                this.scrollToBottom();
+                this.loadCalendarWidget('calendar-booking-target-dup');
+
+                if (!this.restoring) {
+                    this.state.history.push({ type: 'bot', text: finalHtml, isCard: true });
+                    this.saveState();
+                }
+            }
+
+            showInterimCard(res) {
+                const formatYen = (val) => Math.floor(val).toLocaleString() + '万円';
+
+                let desiredHtml = '';
+                if (res.desiredLoanAmount > 0) {
+                    desiredHtml = `
+                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center relative mt-3 shadow-sm">
+                            <span class="absolute -top-3 left-3 bg-gray-600 text-white text-[10px] px-2 py-1 rounded-full font-bold">あなたの希望</span>
+                            <p class="text-xs text-gray-500 font-bold mb-1 mt-1">希望借入額</p>
+                            <p class="text-xl font-bold text-gray-800">${formatYen(res.desiredLoanAmount)}</p>
+                        </div>
+                        <div class="text-center text-gray-300 my-1 text-lg"><i class="fa-solid fa-arrow-down"></i></div>
+                    `;
+                }
+
+                const rule25Html = `
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center relative shadow-sm ${res.desiredLoanAmount <= 0 ? 'mt-3' : ''}">
+                        <span class="absolute -top-3 left-3 bg-blue-500 text-white text-[10px] px-2 py-1 rounded-full font-bold">年収からの目安</span>
+                        <p class="text-xs text-blue-600 font-bold mb-1 mt-1">借入目安（返済比率25%以内）</p>
+                        <p class="text-xl font-bold text-blue-800"><span class="text-sm">約</span>${formatYen(res.loanAmount25)}</p>
+                    </div>
+                `;
+
+                let gapWarningHtml = '';
+                if (res.desiredLoanAmount > 0 && res.desiredLoanAmount - res.loanAmount25 >= 500) {
+                    gapWarningHtml = `
+                        <div class="mt-4 bg-red-50 border border-red-300 rounded-lg p-3 text-center shadow-sm">
+                            <p class="text-red-700 font-bold text-sm mb-1"><i class="fa-solid fa-triangle-exclamation"></i> 借入希望額が安全目安を大きく超えています</p>
+                            <p class="text-xs text-red-600 leading-relaxed font-bold">
+                                年収から見た安全な借入目安（約${formatYen(res.loanAmount25)}）に対し、希望額（${formatYen(res.desiredLoanAmount)}）が大きく上回っています。<br>
+                                このままでは将来の返済が行き詰まる危険性があります。<br>
+                                必ず現在の支出状況を加味して、正確な判定を行ってください。
+                            </p>
+                        </div>
+                    `;
+                }
+
+                const scorePanelHtml = `
+                    <div class="bg-white border border-gray-200 rounded-lg p-3 mb-2 mt-4 shadow-sm">
+                        <h4 class="font-bold text-gray-800 border-b pb-1 mb-3 text-center text-sm"><i class="fa-solid fa-shield-heart text-pink-500 mr-1"></i> FP総合診断スコア</h4>
+                        <div class="grid grid-cols-2 gap-2 mb-3">
+                            <div class="text-center p-2 bg-gray-50 rounded border border-gray-100">
+                                <span class="text-[10px] text-gray-500 block mb-1">①希望借入額</span>
+                                <span class="text-xl font-bold ${res.score1.color}">${res.score1.rank}</span>
+                                <span class="text-[10px] block ${res.score1.color} mt-1 font-bold">${res.score1.text}</span>
+                            </div>
+                            <div class="text-center p-2 bg-gray-50 rounded border border-gray-100">
+                                <span class="text-[10px] text-gray-500 block mb-1">②年収ベース</span>
+                                <span class="text-xl font-bold ${res.score2.color}">${res.score2.rank}</span>
+                                <span class="text-[10px] block ${res.score2.color} mt-1 font-bold">${res.score2.text}</span>
+                            </div>
+                        </div>
+                        <div class="text-center p-4 bg-blue-50 rounded-xl border-[3px] border-primary border-dashed shadow-sm">
+                            <span class="text-sm text-primary block mb-2 font-extrabold tracking-wide">③ 現状家計スコア</span>
+                            <span class="text-4xl font-black text-gray-400 opacity-60">❓</span>
+                            <span class="text-xs block text-primary mt-3 font-bold bg-white inline-block px-4 py-1.5 rounded-full shadow-sm border border-blue-100">支出入力後に正確に判定します</span>
+                        </div>
+                    </div>
+                `;
+
+                const aiInterimId = 'ai-interim-' + Date.now();
+                const interimAiHtml = `
+                    <div class="mt-4 bg-gray-800 border border-blue-500 rounded-xl p-4 text-sm text-white shadow-lg relative overflow-hidden">
+                        <div class="absolute top-0 right-0 bg-blue-500 text-white text-[10px] px-2 py-1 font-bold rounded-bl-lg flex items-center gap-1"><i class="fa-solid fa-wand-magic-sparkles animate-sparkle"></i> AIアドバイス</div>
+                        <p class="font-bold text-blue-300 mb-3 border-b border-gray-600 pb-2">💡 現在の状況からのFP視点</p>
+                        <ul id="${aiInterimId}" class="list-disc pl-5 space-y-2 text-white font-medium text-xs">
+                            <li class="animate-pulse text-white opacity-80">AIが入力データを分析しています...</li>
+                        </ul>
+                    </div>
+                `;
+
+                const ctaBtnHtml = `
+                    <div class="mt-4" id="interimCtaBtnContainer">
+                        <button onclick="app.resumeDetailedChat()" class="w-full bg-gradient-to-r from-orange-400 to-red-500 text-white font-bold py-4 px-4 rounded-xl hover:opacity-90 transition shadow-lg flex flex-col items-center justify-center animate-pulse-soft">
+                            <span class="text-sm opacity-90 mb-1">現在の支出も加味して</span>
+                            <span class="text-lg">正確に計算する (無料) <i class="fa-solid fa-arrow-circle-right ml-1"></i></span>
+                        </button>
+                    </div>
+                `;
+
+                const html = `
+                    <div class="flex gap-3 message-enter w-full max-w-[95%] sm:max-w-[85%] mx-auto mt-2 mb-4">
+                        <div class="bg-white border-2 border-primary rounded-xl shadow-md w-full overflow-hidden">
+                            <div class="bg-primary text-white text-center py-2 font-bold text-sm tracking-wide">
+                                <i class="fa-solid fa-clipboard-user mr-1"></i> 簡易診断結果
+                            </div>
+                            <div class="p-3 sm:p-4 flex flex-col">
+                                ${desiredHtml}
+                                ${rule25Html}
+                                ${gapWarningHtml}
+                                ${scorePanelHtml}
+                                ${interimAiHtml}
+                                ${ctaBtnHtml}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                this.chatArea.insertAdjacentHTML('beforeend', html);
+                this.scrollToBottom();
+
+                if (!this.restoring) {
+                    this.state.history.push({ type: 'bot', text: html, isCard: true });
+                    this.saveState();
+                    this.generateInterimAIAdvice(aiInterimId);
+                }
+            }
+
+            async generateInterimAIAdvice(elementId) {
+                const u = this.state.userData;
+                const r = this.state.results.fp;
+                const totalIncome = (u.yourIncome || 0) + (u.spouseIncome || 0);
+
+                const systemPrompt = "あなたはユーザーに寄り添う、親身で丁寧なアドバイスが評判の住宅ローン専門FPです。出力はHTMLの<li>タグのみを使用し、箇条書きで2点出力してください。決して高圧的・否定的な言葉は使わず、優しい口調（「〜ですね」「〜をおすすめします」等）で、現時点での予算や年齢・家族構成から言えるポジティブな気付きや、この後の詳細な家計分析に向けたワンポイントアドバイスを行ってください。挨拶は不要です。";
+                
+                const userPrompt = `
+以下の初期情報を元に、現時点での住宅購入の予算立てに関するワンポイントアドバイスを2つ作成してください。文字数は1つの<li>につき60文字程度で簡潔に。
+
+【初期情報】
+- 世帯年収: ${Math.floor(totalIncome)}万円
+- 年齢: 本人 ${u.yourAge || 0}歳 / 配偶者 ${u.spouseAge ? u.spouseAge + '歳' : 'なし'}
+- 家族構成: 子供${u.childrenCount || 0}人
+- 現在の貯金: ${u.currentSavings || 0}万円
+- 借入希望額: ${u.desiredLoanAmount || 0}万円
+- 年収から見た借入目安(25%ルール): 約${Math.floor(r.loanAmount25)}万円
+`;
+                const aiResponse = await this.callGeminiAPI(systemPrompt, userPrompt);
+                
+                const resultElement = document.getElementById(elementId);
+                if (resultElement) {
+                    const cleanHtml = aiResponse.replace(/```html/g, '').replace(/```/g, '').trim();
+                    resultElement.innerHTML = cleanHtml;
+                    
+                    if (!this.restoring) {
+                        for (let i = this.state.history.length - 1; i >= 0; i--) {
+                            if (this.state.history[i].isCard && this.state.history[i].text.includes(elementId)) {
+                                this.state.history[i].text = this.state.history[i].text.replace(
+                                    new RegExp(`<ul id="${elementId}"[^>]*>[\\s\\S]*?<\/ul>`), 
+                                    `<ul id="${elementId}" class="list-disc pl-5 space-y-2 text-white font-medium text-xs">${cleanHtml}</ul>`
+                                );
+                                this.saveState();
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            async showFinalBookingCard() {
+                const uName = (this.state.userData.lastName || '') + ' ' + (this.state.userData.firstName || '');
+                const aiResultId = 'ai-result-' + Date.now();
+
+                const finalHtml = `
+                    <div class="flex gap-3 message-enter w-full max-w-[95%] sm:max-w-[85%] mx-auto mt-2 mb-4">
+                        <div class="bg-white border-[3px] border-red-400 rounded-xl shadow-xl w-full overflow-hidden mb-4">
+                            <div class="bg-red-500 text-white text-center py-3 font-bold text-base tracking-wide flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-triangle-exclamation text-xl"></i> 家計の精密分析が完了しました
+                            </div>
+                            <div class="p-4 sm:p-6 flex flex-col">
+                                <p class="text-gray-800 font-bold text-sm sm:text-base mb-4 leading-relaxed">
+                                    ${uName}さん、詳細な入力ありがとうございます。<br><br>
+                                    入力データを分析した結果、<span class="text-red-600 border-b-2 border-red-600">将来のローン返済や教育費・老後資金に影響を与える「隠れたリスク」</span>がいくつか検知されました。
+                                </p>
+                                
+                                <!-- AI分析エリア -->
+                                <div class="bg-gray-800 border border-red-500 rounded-lg p-4 mb-6 text-sm text-white shadow-md relative overflow-hidden">
+                                    <div class="absolute top-0 right-0 bg-red-600 text-white text-[10px] px-2 py-0.5 font-bold rounded-bl flex items-center gap-1"><i class="fa-solid fa-wand-magic-sparkles animate-sparkle"></i> AI分析結果</div>
+                                    <p class="font-bold text-red-400 mb-3 border-b border-gray-600 pb-2">⚠ あなたの家計で特に注意すべき3つのポイント</p>
+                                    <ul id="${aiResultId}" class="list-disc pl-5 space-y-3 font-medium text-white">
+                                        ${this.state.results.aiAdvice || `<li class="animate-pulse text-white opacity-80">AIが入力データを元にリスクを抽出しています...</li><li class="animate-pulse text-white opacity-80" style="animation-delay: 0.2s">もう少しお待ちください...</li>`}
+                                    </ul>
+                                </div>
+
+                                <div class="bg-blue-50 border-2 border-blue-200 rounded-xl p-5 sm:p-6 text-center shadow-sm flex flex-col items-center">
+                                    <h4 class="font-bold text-blue-800 text-lg sm:text-xl mb-3"><i class="fa-solid fa-video"></i> プロのFPとオンラインで答え合わせ</h4>
+                                    <p class="text-sm text-gray-700 mb-6 text-left leading-relaxed w-full">
+                                        上記のAIが指摘したポイントを中心に、あなた専用の「無理のない返済プラン」と「家計改善案」を無料で作成・お渡しします。<br class="hidden sm:block">このまま進めて数百万円損をしないために、まずは一度ご相談ください。
+                                    </p>
+                                    
+                                    <div id="calendar-booking-target" class="w-full flex justify-center min-h-[50px] mb-4">
+                                        <!-- Google Calendar Button loads here -->
+                                    </div>
+
+                                    <p class="text-[11px] sm:text-xs text-red-600 font-bold bg-white px-4 py-2 rounded-full border border-red-200 shadow-sm inline-block">
+                                        <i class="fa-solid fa-circle-exclamation mr-1"></i> ※予約が完了しましたら、この画面は閉じて終了してください。
+                                    </p>
+                                </div>
+                                
+                                ${buildReviewsSlider()}
+                                
+                                <!-- IE-LOG バナー追加 -->
+                                <div class="mt-8 border-t border-dashed border-gray-300 pt-6">
+                                    <h4 class="font-bold text-gray-800 text-center mb-4 text-sm sm:text-base">
+                                        <i class="fa-solid fa-building text-blue-500 mr-2"></i>ハウスメーカー選びでお悩みの方へ
+                                    </h4>
+                                    <a href="https://myhomeheroe--review.pages.dev/" target="_blank" rel="noopener noreferrer" class="block rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow hover:opacity-95 border border-gray-200 bg-gray-100 mt-2">
+                                        <img src="https://frightened-moccasin-hbgxdwxauz.edgeone.app/ホワイト%20黒%20飲食店%20レストラン%20カフェ%20LINEリッチメニュー%20(9).png" alt="マイホームヒーローズ リアルな口コミ 無料で見れる" class="w-full h-auto object-cover" onerror="this.src='https://placehold.co/800x500/e2e8f0/64748b?text=MyHomeHeroes+Review+Site';">
+                                    </a>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                this.chatArea.insertAdjacentHTML('beforeend', finalHtml);
+                this.scrollToBottom();
+                this.loadCalendarWidget();
+
+                this.inputContainer.innerHTML = '';
+                
+                if (!this.restoring) {
+                    this.state.history.push({ type: 'bot', text: finalHtml, isCard: true });
+                    this.saveState();
+                    if(!this.state.results.aiAdvice) {
+                        this.generateAIAdvice(aiResultId);
+                    }
+                }
+            }
+
+            async callGeminiAPI(systemInstruction, userText) {
+                const apiKey = ""; 
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+                const payload = {
+                    contents: [{ parts: [{ text: userText }] }],
+                    systemInstruction: { parts: [{ text: systemInstruction }] }
+                };
+
+                let delay = 1000;
+                for (let i = 0; i < 5; i++) {
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        if (!response.ok) throw new Error(`API Error: ${response.status}`);
+                        const result = await response.json();
+                        return result.candidates?.[0]?.content?.parts?.[0]?.text || "<li>現在の家計バランスが将来の金利上昇に耐えられるか、FPと一緒にシミュレーションしてみましょう。</li><li>お子様の進学時期と住宅ローンの負担が重なる時期のキャッシュフローを事前に確認しておくと安心です。</li><li>老後資金と住宅ローン完済のタイミングについて、無理のない計画を立てていきましょう。</li>";
+                    } catch (error) {
+                        if (i === 4) {
+                            console.error("Gemini API Error:", error);
+                            return "<li>現在の家計バランスが将来の金利上昇に耐えられるか、FPと一緒にシミュレーションしてみましょう。</li><li>お子様の進学時期と住宅ローンの負担が重なる時期のキャッシュフローを事前に確認しておくと安心です。</li><li>老後資金と住宅ローン完済のタイミングについて、無理のない計画を立てていきましょう。</li>";
+                        }
+                        await new Promise(res => setTimeout(res, delay));
+                        delay *= 2;
+                    }
+                }
+            }
+
+            loadCalendarWidget(targetId = 'calendar-booking-target') {
+                const targetDiv = document.getElementById(targetId);
+                if (!targetDiv) return;
+                
+                trackEvent('booking_widget_loaded');
+
+                if (window.calendar && window.calendar.schedulingButton) {
+                    window.calendar.schedulingButton.load({
+                        url: 'https://calendar.google.com/calendar/appointments/schedules/AcZssZ0ybitZ6eY8qy9c-mIlehbMpVhOJBqptmylWpDflAj6se7D3Mu9b6xn_ZKd1S61ahBKZay28MiA?gv=true',
+                        color: '#DC2626', 
+                        label: '無料FP相談の予約可能な日程を見る',
+                        target: targetDiv,
+                    });
+                } else {
+                    const link = document.createElement('link');
+                    link.href = 'https://calendar.google.com/calendar/scheduling-button-script.css';
+                    link.rel = 'stylesheet';
+                    document.head.appendChild(link);
+
+                    const script = document.createElement('script');
+                    script.src = 'https://calendar.google.com/calendar/scheduling-button-script.js';
+                    script.onload = () => {
+                         window.calendar.schedulingButton.load({
+                            url: 'https://calendar.google.com/calendar/appointments/schedules/AcZssZ0ybitZ6eY8qy9c-mIlehbMpVhOJBqptmylWpDflAj6se7D3Mu9b6xn_ZKd1S61ahBKZay28MiA?gv=true',
+                            color: '#DC2626', 
+                            label: '無料FP相談の予約可能な日程を見る',
+                            target: targetDiv
+                        });
+                    };
+                    document.body.appendChild(script);
+                }
+            }
+        }
+
+        // Initialize App
+        const app = new App();
+
+    </script>
+</body>
+</html>
