@@ -674,7 +674,6 @@
 
         const QUESTIONS = [
             { id: 'greet', type: 'info', text: 'こんにちは！住宅ローン診断を開始します。🏠' },
-            { id: 'diagnosisMode', type: 'choice', text: 'どちらの判定方法をご希望ですか？', options: [{label:'借入希望額から判定する', value:'fromLoan'}, {label:'年収から判定する', value:'fromIncome'}] },
             { id: 'yourIncome', type: 'number', text: 'あなたの年収を教えてください', unit: '万円', min: 0, max: 10000 },
             { id: 'spouseIncome', type: 'number', text: '配偶者の年収を教えてください\n(いない場合は0を入力)', unit: '万円', min: 0 },
             { id: 'yourAge', type: 'number', text: 'あなたの年齢を教えてください', unit: '歳', min: 18, max: 80 },
@@ -1287,9 +1286,10 @@
                                         あなた専用の「無理のない返済プラン」と「家計改善案」を無料で作成・お渡しします。<br class="hidden sm:block">このまま進めて数百万円損をしないために、まずは一度ご相談ください。
                                     </p>
                                     
-                                    <div id="calendar-booking-target-dup" class="w-full flex justify-center min-h-[50px] mb-4">
-                                        <!-- Google Calendar Button loads here -->
-                                    </div>
+                                    <a href="https://calendar.google.com/calendar/appointments/schedules/AcZssZ0ybitZ6eY8qy9c-mIlehbMpVhOJBqptmylWpDflAj6se7D3Mu9b6xn_ZKd1S61ahBKZay28MiA?gv=true" target="_blank" rel="noopener noreferrer" onclick="trackEvent('booking_button_clicked')" class="w-full bg-red-600 text-white font-bold py-4 px-2 rounded-xl shadow-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2 mb-4 animate-pulse-soft text-sm sm:text-base border border-red-500">
+                                        <i class="fa-regular fa-calendar-check text-xl"></i>
+                                        <span>無料FP相談の予約可能な日程を見る</span>
+                                    </a>
 
                                     <p class="text-[11px] sm:text-xs text-red-600 font-bold bg-white px-4 py-2 rounded-full border border-red-200 shadow-sm inline-block">
                                         <i class="fa-solid fa-circle-exclamation mr-1"></i> ※予約が完了しましたら、この画面は閉じて終了してください。
@@ -1303,8 +1303,15 @@
                                     <h4 class="font-bold text-gray-800 text-center mb-4 text-sm sm:text-base">
                                         <i class="fa-solid fa-building text-blue-500 mr-2"></i>ハウスメーカー選びでお悩みの方へ
                                     </h4>
-                                    <a href="https://myhomeheroe--review.pages.dev/" target="_blank" rel="noopener noreferrer" class="block rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow hover:opacity-95 border border-gray-200 bg-gray-100 mt-2">
-                                        <img src="https://frightened-moccasin-hbgxdwxauz.edgeone.app/ホワイト%20黒%20飲食店%20レストラン%20カフェ%20LINEリッチメニュー%20(9).png" alt="マイホームヒーローズ リアルな口コミ 無料で見れる" class="w-full h-auto object-cover" onerror="this.src='https://placehold.co/800x500/e2e8f0/64748b?text=MyHomeHeroes+Review+Site';">
+                                    <a href="https://myhomeheroe--review.pages.dev/" target="_blank" rel="noopener noreferrer" onclick="trackEvent('ielog_banner_clicked')" class="block w-full rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 border border-gray-200 bg-white mt-2">
+                                        <div class="relative w-full bg-blue-50">
+                                            <img src="images/myhomeheroes.png" alt="ハウスメーカー・工務店のリアルな口コミ 無料で見れる" class="w-full h-auto object-contain block" loading="lazy" decoding="async" onerror="this.onerror=null; this.style.display='none'; this.parentElement.querySelector('.image-fallback').classList.remove('hidden');">
+                                            <div class="image-fallback hidden p-6 text-center bg-gradient-to-r from-blue-500 to-sky-400 text-white">
+                                                <p class="text-sm font-bold mb-2">ハウスメーカー・工務店の</p>
+                                                <p class="text-2xl sm:text-4xl font-black mb-2">リアルな口コミ</p>
+                                                <p class="text-lg sm:text-2xl font-bold">無料で見れる</p>
+                                            </div>
+                                        </div>
                                     </a>
                                 </div>
 
@@ -1315,7 +1322,6 @@
                 
                 this.chatArea.insertAdjacentHTML('beforeend', finalHtml);
                 this.scrollToBottom();
-                this.loadCalendarWidget('calendar-booking-target-dup');
 
                 if (!this.restoring) {
                     this.state.history.push({ type: 'bot', text: finalHtml, isCard: true });
@@ -1486,12 +1492,16 @@
                                     入力データを分析した結果、<span class="text-red-600 border-b-2 border-red-600">将来のローン返済や教育費・老後資金に影響を与える「隠れたリスク」</span>がいくつか検知されました。
                                 </p>
                                 
-                                <!-- AI分析エリア -->
-                                <div class="bg-gray-800 border border-red-500 rounded-lg p-4 mb-6 text-sm text-white shadow-md relative overflow-hidden">
-                                    <div class="absolute top-0 right-0 bg-red-600 text-white text-[10px] px-2 py-0.5 font-bold rounded-bl flex items-center gap-1"><i class="fa-solid fa-wand-magic-sparkles animate-sparkle"></i> AI分析結果</div>
-                                    <p class="font-bold text-red-400 mb-3 border-b border-gray-600 pb-2">⚠ あなたの家計で特に注意すべき3つのポイント</p>
-                                    <ul id="${aiResultId}" class="list-disc pl-5 space-y-3 font-medium text-white">
-                                        ${this.state.results.aiAdvice || `<li class="animate-pulse text-white opacity-80">AIが入力データを元にリスクを抽出しています...</li><li class="animate-pulse text-white opacity-80" style="animation-delay: 0.2s">もう少しお待ちください...</li>`}
+                                <!-- AI分析エリア：シンプル版 -->
+                                <div class="bg-white border border-gray-200 rounded-xl p-4 sm:p-5 mb-6 text-sm shadow-sm">
+                                    <div class="flex items-center justify-between gap-3 mb-3 border-b border-gray-100 pb-3">
+                                        <p class="font-bold text-gray-800 text-sm sm:text-base">あなたの家計で確認したい3つのポイント</p>
+                                        <span class="shrink-0 bg-gray-100 text-gray-600 text-[10px] px-2 py-1 rounded-full font-bold flex items-center gap-1">
+                                            <i class="fa-solid fa-wand-magic-sparkles"></i> AI分析
+                                        </span>
+                                    </div>
+                                    <ul id="${aiResultId}" class="list-disc pl-5 space-y-2 leading-relaxed font-medium text-gray-700">
+                                        ${this.state.results.aiAdvice || `<li class="animate-pulse text-gray-500">AIが入力データを元に確認ポイントを整理しています...</li><li class="animate-pulse text-gray-500" style="animation-delay: 0.2s">もう少しお待ちください...</li>`}
                                     </ul>
                                 </div>
 
@@ -1501,9 +1511,10 @@
                                         上記のAIが指摘したポイントを中心に、あなた専用の「無理のない返済プラン」と「家計改善案」を無料で作成・お渡しします。<br class="hidden sm:block">このまま進めて数百万円損をしないために、まずは一度ご相談ください。
                                     </p>
                                     
-                                    <div id="calendar-booking-target" class="w-full flex justify-center min-h-[50px] mb-4">
-                                        <!-- Google Calendar Button loads here -->
-                                    </div>
+                                    <a href="https://calendar.google.com/calendar/appointments/schedules/AcZssZ0ybitZ6eY8qy9c-mIlehbMpVhOJBqptmylWpDflAj6se7D3Mu9b6xn_ZKd1S61ahBKZay28MiA?gv=true" target="_blank" rel="noopener noreferrer" onclick="trackEvent('booking_button_clicked')" class="w-full bg-red-600 text-white font-bold py-4 px-2 rounded-xl shadow-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2 mb-4 animate-pulse-soft text-sm sm:text-base border border-red-500">
+                                        <i class="fa-regular fa-calendar-check text-xl"></i>
+                                        <span>無料FP相談の予約可能な日程を見る</span>
+                                    </a>
 
                                     <p class="text-[11px] sm:text-xs text-red-600 font-bold bg-white px-4 py-2 rounded-full border border-red-200 shadow-sm inline-block">
                                         <i class="fa-solid fa-circle-exclamation mr-1"></i> ※予約が完了しましたら、この画面は閉じて終了してください。
@@ -1517,8 +1528,15 @@
                                     <h4 class="font-bold text-gray-800 text-center mb-4 text-sm sm:text-base">
                                         <i class="fa-solid fa-building text-blue-500 mr-2"></i>ハウスメーカー選びでお悩みの方へ
                                     </h4>
-                                    <a href="https://myhomeheroe--review.pages.dev/" target="_blank" rel="noopener noreferrer" class="block rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow hover:opacity-95 border border-gray-200 bg-gray-100 mt-2">
-                                        <img src="https://frightened-moccasin-hbgxdwxauz.edgeone.app/ホワイト%20黒%20飲食店%20レストラン%20カフェ%20LINEリッチメニュー%20(9).png" alt="マイホームヒーローズ リアルな口コミ 無料で見れる" class="w-full h-auto object-cover" onerror="this.src='https://placehold.co/800x500/e2e8f0/64748b?text=MyHomeHeroes+Review+Site';">
+                                    <a href="https://myhomeheroe--review.pages.dev/" target="_blank" rel="noopener noreferrer" onclick="trackEvent('ielog_banner_clicked')" class="block w-full rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 border border-gray-200 bg-white mt-2">
+                                        <div class="relative w-full bg-blue-50">
+                                            <img src="images/myhomeheroes.png" alt="ハウスメーカー・工務店のリアルな口コミ 無料で見れる" class="w-full h-auto object-contain block" loading="lazy" decoding="async" onerror="this.onerror=null; this.style.display='none'; this.parentElement.querySelector('.image-fallback').classList.remove('hidden');">
+                                            <div class="image-fallback hidden p-6 text-center bg-gradient-to-r from-blue-500 to-sky-400 text-white">
+                                                <p class="text-sm font-bold mb-2">ハウスメーカー・工務店の</p>
+                                                <p class="text-2xl sm:text-4xl font-black mb-2">リアルな口コミ</p>
+                                                <p class="text-lg sm:text-2xl font-bold">無料で見れる</p>
+                                            </div>
+                                        </div>
                                     </a>
                                 </div>
 
@@ -1529,7 +1547,6 @@
                 
                 this.chatArea.insertAdjacentHTML('beforeend', finalHtml);
                 this.scrollToBottom();
-                this.loadCalendarWidget();
 
                 this.inputContainer.innerHTML = '';
                 
@@ -1569,39 +1586,6 @@
                         await new Promise(res => setTimeout(res, delay));
                         delay *= 2;
                     }
-                }
-            }
-
-            loadCalendarWidget(targetId = 'calendar-booking-target') {
-                const targetDiv = document.getElementById(targetId);
-                if (!targetDiv) return;
-                
-                trackEvent('booking_widget_loaded');
-
-                if (window.calendar && window.calendar.schedulingButton) {
-                    window.calendar.schedulingButton.load({
-                        url: 'https://calendar.google.com/calendar/appointments/schedules/AcZssZ0ybitZ6eY8qy9c-mIlehbMpVhOJBqptmylWpDflAj6se7D3Mu9b6xn_ZKd1S61ahBKZay28MiA?gv=true',
-                        color: '#DC2626', 
-                        label: '無料FP相談の予約可能な日程を見る',
-                        target: targetDiv,
-                    });
-                } else {
-                    const link = document.createElement('link');
-                    link.href = 'https://calendar.google.com/calendar/scheduling-button-script.css';
-                    link.rel = 'stylesheet';
-                    document.head.appendChild(link);
-
-                    const script = document.createElement('script');
-                    script.src = 'https://calendar.google.com/calendar/scheduling-button-script.js';
-                    script.onload = () => {
-                         window.calendar.schedulingButton.load({
-                            url: 'https://calendar.google.com/calendar/appointments/schedules/AcZssZ0ybitZ6eY8qy9c-mIlehbMpVhOJBqptmylWpDflAj6se7D3Mu9b6xn_ZKd1S61ahBKZay28MiA?gv=true',
-                            color: '#DC2626', 
-                            label: '無料FP相談の予約可能な日程を見る',
-                            target: targetDiv
-                        });
-                    };
-                    document.body.appendChild(script);
                 }
             }
         }
