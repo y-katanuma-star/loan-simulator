@@ -718,7 +718,7 @@
             
             { id: 'currentSavings', type: 'number', text: '現在の貯金額を教えてください', unit: '万円', min: 0 },
             { id: 'desiredLoanAmount', type: 'number', text: '借入希望額を教えてください\n(希望がない場合は空欄可)', unit: '万円', min: 0 },
-            { id: 'interestRate', type: 'slider', text: '想定金利を教えてください', min: 0.1, max: 3.0, step: 0.1, default: 0.8, unit: '%' },
+            { id: 'interestRate', type: 'slider', text: '想定金利を教えてください\n<span class="text-[11px] text-gray-500 font-medium mt-1 block leading-relaxed">※想定がない場合は1％で設定することをお勧めします</span>', min: 0.1, max: 3.0, step: 0.1, default: 1.0, unit: '%' },
             { id: 'loanPeriod', type: 'number', text: '返済期間を教えてください', unit: '年', min: 1, max: 50 },
             
             { id: 'lastName', type: 'text', text: '【姓】を教えてください\n<span class="text-[10px] text-red-500 font-bold mt-1 block leading-tight"><i class="fa-solid fa-triangle-exclamation"></i> 架空のお名前や不正な入力と判断された場合、無料面談や診断結果の提供をお断りする場合がございます。</span>', validate: validateName },
@@ -1039,22 +1039,35 @@
                     }
                 } 
                 else if (actionId === 'show_final_booking') {
-                    const aiAdviceHtml = await this.fetchAIAdvice();
-                    this.state.results.aiAdvice = aiAdviceHtml;
-
-                    const payload = { 
-                        ...this.state.userData, 
-                        fullName: (this.state.userData.lastName || '') + ' ' + (this.state.userData.firstName || ''),
-                        loanAmount25: Math.floor(this.state.results.fp.loanAmount25 || 0),
-                        score1Rank: this.state.results.fp.score1.rank,
-                        score2Rank: this.state.results.fp.score2.rank,
-                        aiAdviceText: aiAdviceHtml.replace(/<[^>]*>?/gm, ' / ').trim(),
-                        action: 'updateFinal' 
-                    };
-
-                    await this.communicateWithGAS(payload);
-                    
                     this.hideTyping();
+                    const progress = this.showAnalysisProgress();
+
+                    try {
+                        progress.update(12, '入力内容を整理しています...');
+
+                        const aiAdviceHtml = await this.fetchAIAdvice();
+                        this.state.results.aiAdvice = aiAdviceHtml;
+
+                        progress.update(78, '分析結果を保存しています...');
+
+                        const payload = { 
+                            ...this.state.userData, 
+                            fullName: (this.state.userData.lastName || '') + ' ' + (this.state.userData.firstName || ''),
+                            loanAmount25: Math.floor(this.state.results.fp.loanAmount25 || 0),
+                            score1Rank: this.state.results.fp.score1.rank,
+                            score2Rank: this.state.results.fp.score2.rank,
+                            aiAdviceText: aiAdviceHtml.replace(/<[^>]*>?/gm, ' / ').trim(),
+                            action: 'updateFinal' 
+                        };
+
+                        await this.communicateWithGAS(payload);
+
+                        progress.finish();
+                        await new Promise(r => setTimeout(r, 450));
+                    } finally {
+                        progress.remove();
+                    }
+
                     trackEvent('final_phase_completed');
                     this.showFinalBookingCard();
                 }
@@ -1236,6 +1249,69 @@
                 }
             }
 
+            showAnalysisProgress() {
+                const existing = document.getElementById('analysisProgressCard');
+                if (existing) existing.remove();
+
+                const startedAt = Date.now();
+                let currentPercent = 8;
+                const html = `
+                    <div id="analysisProgressCard" class="flex gap-3 message-enter w-full max-w-[95%] sm:max-w-[85%] mx-auto mt-2 mb-4">
+                        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex-shrink-0 flex items-center justify-center mt-1 shadow bg-white overflow-hidden border border-gray-100">
+                            <img src="https://loan-diagnosis-admin.pages.dev/images/logo.png" alt="Bot" class="w-full h-full object-cover">
+                        </div>
+                        <div class="bg-white border border-gray-200 rounded-2xl rounded-tl-none shadow-sm p-4 w-full">
+                            <div class="flex items-center justify-between gap-3 mb-3">
+                                <div>
+                                    <p class="font-bold text-gray-800 text-sm sm:text-base">家計データを分析しています</p>
+                                    <p id="analysisProgressStatus" class="text-xs text-gray-500 mt-1">入力内容・支出バランス・借入希望額を確認中...</p>
+                                </div>
+                                <span id="analysisProgressPercent" class="text-sm font-bold text-primary shrink-0">8%</span>
+                            </div>
+                            <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                                <div id="analysisProgressBar" class="bg-primary h-2 rounded-full transition-all duration-500 ease-out" style="width: 8%"></div>
+                            </div>
+                            <div class="flex items-center justify-between mt-2 text-[11px] text-gray-400">
+                                <span>目安の進捗を表示しています</span>
+                                <span id="analysisProgressSeconds">0秒経過</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                this.chatArea.insertAdjacentHTML('beforeend', html);
+                this.scrollToBottom();
+
+                const setProgress = (percent, status) => {
+                    currentPercent = Math.max(currentPercent, Math.min(100, Math.floor(percent)));
+                    const bar = document.getElementById('analysisProgressBar');
+                    const percentEl = document.getElementById('analysisProgressPercent');
+                    const statusEl = document.getElementById('analysisProgressStatus');
+                    if (bar) bar.style.width = `${currentPercent}%`;
+                    if (percentEl) percentEl.textContent = `${currentPercent}%`;
+                    if (status && statusEl) statusEl.textContent = status;
+                };
+
+                const timer = setInterval(() => {
+                    const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+                    const secondsEl = document.getElementById('analysisProgressSeconds');
+                    if (secondsEl) secondsEl.textContent = `${elapsed}秒経過`;
+
+                    // API通信時間は環境により変動するため、95%までは体感用の目安として進める
+                    const estimated = Math.min(95, 8 + elapsed * 9);
+                    setProgress(estimated);
+                }, 1000);
+
+                return {
+                    update: (percent, status) => setProgress(percent, status),
+                    finish: () => setProgress(100, '分析が完了しました。結果を表示します...'),
+                    remove: () => {
+                        clearInterval(timer);
+                        const el = document.getElementById('analysisProgressCard');
+                        if (el) el.remove();
+                    }
+                };
+            }
+
             showTyping() {
                 if (document.getElementById('typingIndicator')) return;
                 const html = `
@@ -1395,7 +1471,7 @@
                         <div class="absolute top-0 right-0 bg-blue-500 text-white text-[10px] px-2 py-1 font-bold rounded-bl-lg flex items-center gap-1"><i class="fa-solid fa-wand-magic-sparkles animate-sparkle"></i> AIアドバイス</div>
                         <p class="font-bold text-blue-300 mb-3 border-b border-gray-600 pb-2">💡 現在の状況からのFP視点</p>
                         <ul id="${aiInterimId}" class="list-disc pl-5 space-y-2 text-white font-medium text-xs">
-                            <li class="animate-pulse text-white opacity-80">AIが入力データを分析しています...</li>
+                            <li class="animate-pulse text-gray-500">AIが入力データを分析しています...</li>
                         </ul>
                     </div>
                 `;
@@ -1476,30 +1552,49 @@
                 }
             }
 
+            async generateAIAdvice(elementId) {
+                const aiAdviceHtml = await this.fetchAIAdvice();
+                this.state.results.aiAdvice = aiAdviceHtml;
+
+                const resultElement = document.getElementById(elementId);
+                if (resultElement) {
+                    resultElement.innerHTML = aiAdviceHtml;
+
+                    if (!this.restoring) {
+                        for (let i = this.state.history.length - 1; i >= 0; i--) {
+                            if (this.state.history[i].isCard && this.state.history[i].text.includes(elementId)) {
+                                this.state.history[i].text = this.state.history[i].text.replace(
+                                    new RegExp(`<ul id="${elementId}"[^>]*>[\s\S]*?<\/ul>`),
+                                    `<ul id="${elementId}" class="list-disc pl-5 space-y-2 leading-relaxed font-medium text-gray-700">${aiAdviceHtml}</ul>`
+                                );
+                                this.saveState();
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
             async showFinalBookingCard() {
                 const uName = (this.state.userData.lastName || '') + ' ' + (this.state.userData.firstName || '');
                 const aiResultId = 'ai-result-' + Date.now();
 
                 const finalHtml = `
                     <div class="flex gap-3 message-enter w-full max-w-[95%] sm:max-w-[85%] mx-auto mt-2 mb-4">
-                        <div class="bg-white border-[3px] border-red-400 rounded-xl shadow-xl w-full overflow-hidden mb-4">
-                            <div class="bg-red-500 text-white text-center py-3 font-bold text-base tracking-wide flex items-center justify-center gap-2">
-                                <i class="fa-solid fa-triangle-exclamation text-xl"></i> 家計の精密分析が完了しました
+                        <div class="bg-white border border-gray-200 rounded-xl shadow-md w-full overflow-hidden mb-4">
+                            <div class="bg-gray-50 text-gray-800 text-center py-3 font-bold text-base tracking-wide flex items-center justify-center gap-2 border-b border-gray-200">
+                                <i class="fa-solid fa-chart-line text-primary text-lg"></i> 家計の分析が完了しました
                             </div>
                             <div class="p-4 sm:p-6 flex flex-col">
                                 <p class="text-gray-800 font-bold text-sm sm:text-base mb-4 leading-relaxed">
                                     ${uName}さん、詳細な入力ありがとうございます。<br><br>
-                                    入力データを分析した結果、<span class="text-red-600 border-b-2 border-red-600">将来のローン返済や教育費・老後資金に影響を与える「隠れたリスク」</span>がいくつか検知されました。
+                                    入力データをもとに、住宅ローン・教育費・老後資金のバランスで<span class="font-bold text-gray-900">事前に確認しておきたいポイント</span>を整理しました。
                                 </p>
                                 
-                                <!-- AI分析エリア：シンプル版 -->
+                                <!-- AI分析エリア -->
                                 <div class="bg-white border border-gray-200 rounded-xl p-4 sm:p-5 mb-6 text-sm shadow-sm">
-                                    <div class="flex items-center justify-between gap-3 mb-3 border-b border-gray-100 pb-3">
-                                        <p class="font-bold text-gray-800 text-sm sm:text-base">あなたの家計で確認したい3つのポイント</p>
-                                        <span class="shrink-0 bg-gray-100 text-gray-600 text-[10px] px-2 py-1 rounded-full font-bold flex items-center gap-1">
-                                            <i class="fa-solid fa-wand-magic-sparkles"></i> AI分析
-                                        </span>
-                                    </div>
+                                    <div class="shrink-0 bg-gray-100 text-gray-600 text-[10px] px-2 py-1 rounded-full font-bold inline-flex items-center gap-1 mb-3"><i class="fa-solid fa-wand-magic-sparkles animate-sparkle"></i> AI分析</div>
+                                    <p class="font-bold text-gray-800 text-sm sm:text-base mb-3 border-b border-gray-100 pb-3">あなたの家計で確認したい3つのポイント</p>
                                     <ul id="${aiResultId}" class="list-disc pl-5 space-y-2 leading-relaxed font-medium text-gray-700">
                                         ${this.state.results.aiAdvice || `<li class="animate-pulse text-gray-500">AIが入力データを元に確認ポイントを整理しています...</li><li class="animate-pulse text-gray-500" style="animation-delay: 0.2s">もう少しお待ちください...</li>`}
                                     </ul>
